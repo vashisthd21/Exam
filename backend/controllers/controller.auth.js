@@ -18,28 +18,37 @@ const register = async (req, res) => {
         res.status(500).json({message: 'Error registering user', error: error.message});
     }
 };
-
-const login = async( req, res) => {
-    const {email, password} = req.body;
+const login = async (req, res) => {
+    const { email, password } = req.body;
     try {
-        const user = await User.findOne({email});
-    
-        if(!user || !(await bcrypt.compare(password, user.password)))       //check if this statement is correct
-            return res.status
-                    (401).json({message: 'Invalid email or password'});
-    
-        const token = generateToken(user._id);;
-        console.log('User ID:', user.name);
-        res.status(200)
+        const user = await User.findOne({ email });
+
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ message: 'Invalid email or password' });
+        }
+
+        const token = generateToken(user._id);
+
+        const options = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 3600000 // 1 hour
+        };
+
+        console.log('User logged in:', user.name);
+
+        return res
+            .cookie("BearerToken", token, options)
+            .status(200)
             .json({
                 token,
-                user: { id: user._id, name: user.name},
-                message: 'Login successful. Taking you to Quiz page'});    
-        }
-        catch (error) {
-            res.status(500)
-                .json({message: "Error logging in", error: error.message});
-        };
+                user: { id: user._id, name: user.name, email: user.email },
+                message: 'Login successful. Taking you to Quiz page'
+            });
+    } catch (error) {
+        res.status(500).json({ message: "Error logging in", error: error.message });
+    }
 };
 
 //Check for it

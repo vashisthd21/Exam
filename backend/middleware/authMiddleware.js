@@ -1,29 +1,24 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/model.user.js';
 
-// const generateToken = (userId) => {
-//     return jwt.sign({userId}, process.env.JWT_SECRET, {expiresIn : '1h'});
-// };
+const authMiddleware = async (req, res, next) => {
+    // Retrieve token from cookie or Authorization header
+    const token =
+        req.cookies?.BearerToken ||
+        req.header("Authorization")?.replace("Bearer ", "");
 
-const authMiddleware = async (req, res) => {
-    // console.log(req.header);
-    // const token = req.header('authorization')?.replace('Bearer ','');
-    // console.log('Token:', token);
-    // console.log('All Headers:', req.headers); 
-    console.log('Cookies:', req.cookies);
-    const authHeader = req.cookies?.BearerToken || req.header("Authorization")?.replace("Bearer ", "")
-    console.log('Authorization Header:', authHeader);
-
-    const token = authHeader?.replace('Bearer ', '');
     console.log('Token:', token);
-    if(!token)  return res.status(401).json({message: 'Access denied. No token provided.'});
 
-    try{
+    if (!token) {
+        return res.status(401).json({ message: 'Access denied. No token provided.' });
+    }
+
+    try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = await User.findById(decoded.userId).select('-password');
-        next();
+        req.user = await User.findById(decoded.id).select('-password'); // Use `.id` based on token payload
+        next(); // Important to proceed to the next middleware or route handler
     } catch (error) {
-        res.status(400).json({message: 'Invalid token', error: error.message});
+        return res.status(400).json({ message: 'Invalid token', error: error.message });
     }
 };
 

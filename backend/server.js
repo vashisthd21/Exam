@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import http from 'http';
 import {Server} from 'socket.io';
+import cookieParser from 'cookie-parser';
+
 
 import dotenv from 'dotenv';
 dotenv.config({
@@ -11,6 +13,7 @@ dotenv.config({
 
 const app = express();
 const server = http.createServer(app);
+app.use(cookieParser());
 const io = new Server(server, {
   cors: {
     origin: '*',
