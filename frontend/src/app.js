@@ -1,7 +1,7 @@
 import {BrowserRouter, Routes, Route} from 'react-router-dom';
-import Register from './pages/register.js';
-import login from './pages/login';
-import Quiz from './pages/Quiz';
+import Register from './pages/Register.jsx';
+import login from './pages/login.jsx';
+import Quiz from './pages/Quiz.jsx';
 
 function App() {
     return (
