@@ -6,8 +6,16 @@ import User from '../models/model.user.js';
 // };
 
 const authMiddleware = async (req, res) => {
-    const token = req.header('Authorization')?.replace('Bearer','');
+    // console.log(req.header);
+    // const token = req.header('authorization')?.replace('Bearer ','');
+    // console.log('Token:', token);
+    // console.log('All Headers:', req.headers); 
+    console.log('Cookies:', req.cookies);
+    const authHeader = req.cookies?.BearerToken || req.header("Authorization")?.replace("Bearer ", "")
+    console.log('Authorization Header:', authHeader);
 
+    const token = authHeader?.replace('Bearer ', '');
+    console.log('Token:', token);
     if(!token)  return res.status(401).json({message: 'Access denied. No token provided.'});
 
     try{

@@ -6,10 +6,12 @@ const getQuestions = async (req, res) => {
         const quiz = {};
 
         for( const subject of subjects) {
-            quiz[subject] = await Question.find({ subject}.limit(5));
+            quiz[subject] = await Question.find({ subject }).limit(5);
+
         }
         res.json(quiz);
     } catch (error) {
+        console.error('Error fetching quiz questions:', error);
         res.status(500).json({message: 'Quiz fetching failed'});
     }
 };

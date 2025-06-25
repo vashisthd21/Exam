@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const generateToken = (userId) => {
-    return jwt.sign({id: userId}, process.env.JWT_SECRET,{expiresIn: '1h'});
+    return jwt.sign({userId}, process.env.JWT_SECRET,{expiresIn: '1h'});
 };
 
 const register = async (req, res) => {
@@ -29,11 +29,12 @@ const login = async( req, res) => {
                     (401).json({message: 'Invalid email or password'});
     
         const token = generateToken(user._id);;
-
+        console.log('User ID:', user.name);
         res.status(200)
-            .json({token,
+            .json({
+                token,
                 user: { id: user._id, name: user.name},
-                message: 'Login successful. Taking you to Quiz page', token});    
+                message: 'Login successful. Taking you to Quiz page'});    
         }
         catch (error) {
             res.status(500)
