@@ -16,22 +16,21 @@ const getQuestions = async (req, res) => {
     }
 };
 
-const submitQuiz = async(req, res) => {
-    const {answers} = req.body;
+const submitQuiz = async (req, res) => {
+    const { answers } = req.body;
     let score = 0;
 
-    try{
-        for(let submitted of answers) {
-            const q = await Question.findOne({subject: submitted.subject});
-            const actual = await Question.findOne(q.qid === submitted.subject);     //COULD BE SOME BUG
-            if(actual && actual.answer === submitted.answer) {
+    try {
+        for (let submitted of answers) {
+            const question = await Question.findOne({ qid: submitted.qid }); // Use qid or _id
+            if (question && question.answer === submitted.answer) {
                 score++;
             }
         }
-        res.json({message: 'Quiz submitted suzzesfully', score: score});
+
+        res.json({ message: 'Quiz submitted successfully', score });
+    } catch (error) {
+        res.status(500).json({ message: 'Error in submitting quiz', error: error.message });
     }
-    catch (e) {
-        return res.json({message: 'Error in submitting quiz',error: e.message});
-    }
-}
-export default getQuestions;
+};
+export {getQuestions, submitQuiz};
