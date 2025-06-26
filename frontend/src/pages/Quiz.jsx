@@ -9,7 +9,13 @@ export default function Quiz() {
   const [subjects, setSubjects] = useState([]); // list of subjects
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  const [answers, setAnswers] = useState([]);  //stores answers
+  const [submitted, setSubmitted] = useState(false);
+  const [score, setScore] = useState(0); 
+
   const [selectedAnswers, setSelectedAnswers] = useState({}); // store answers
+
   const userId = '123abc';
 
   useEffect(() => {
@@ -60,12 +66,21 @@ export default function Quiz() {
       .slice(0, currentSubjectIndex)
       .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
 
+      //--------------storing answers ----------------
+
+const handleAnswerSelect = (qid, option) => {
+  setAnswers((prev) =>
+    [...prev.filter((ans) => ans.qid !== qid), { qid, answer: option }]
+  );
+};
+
   const handleAnswerSelect = (option) => {
     setSelectedAnswers({
       ...selectedAnswers,
       [`${currentSubject}-${currentQuestionIndex}`]: option,
     });
   };
+
 
   const goNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -87,6 +102,38 @@ export default function Quiz() {
     }
   };
 
+  // Fnuction to submit the quiz
+  const handleSubmit = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      'http://localhost:5000/api/quiz/submit',
+      {
+        userId,
+        answers: answers,
+      },
+      {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        withCredentials: true,
+      }
+    );
+
+    setSubmitted(true);
+    setScore(response.data.score); // assuming backend returns score
+    alert('Quiz submitted successfully');
+  } catch (error) {
+    console.log('Error submitting quiz:', error);
+    alert('Error submitting quiz!');
+  }
+};
+
+  return submitted ? (
+          <div style={styles.container}>
+            <h2>Quiz Submitted!</h2>
+            <p style={{ fontSize: 18 }}>Your Score: {score} / {totalQuestions}</p>
+          </div>
+        ) : (
+
   return (
     <div style={styles.container}>
       <h1>Quiz - {currentSubject}</h1>
@@ -99,6 +146,13 @@ export default function Quiz() {
           {currentQuestion.options.map((opt, idx) => (
             <label key={idx} style={styles.optionLabel}>
               <input
+
+              type="radio"
+              name={`q-${currentQuestion._id}`}
+              value={opt}
+              onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
+            />
+
                 type="radio"
                 name={`question-${currentSubject}-${currentQuestionIndex}`}
                 value={opt}
@@ -106,6 +160,7 @@ export default function Quiz() {
                 onChange={() => handleAnswerSelect(opt)}
                 style={styles.radioInput}
               />
+
               {opt}
             </label>
           ))}
@@ -126,6 +181,19 @@ export default function Quiz() {
         >
           Next
         </button>
+
+        
+        <button
+        onClick={handleSubmit}
+        style={{
+          ...styles.navButton,
+          backgroundColor: 'green',
+          marginLeft: '10px',
+        }}
+        >
+        Submit
+      </button>
+
       </div>
     </div>
   );

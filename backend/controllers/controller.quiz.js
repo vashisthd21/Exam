@@ -17,20 +17,29 @@ const getQuestions = async (req, res) => {
 };
 
 const submitQuiz = async (req, res) => {
-    const { answers } = req.body;
+  try {
+    const { userId, answers } = req.body;
     let score = 0;
 
-    try {
-        for (let submitted of answers) {
-            const question = await Question.findOne({ qid: submitted.qid }); // Use qid or _id
-            if (question && question.answer === submitted.answer) {
-                score++;
-            }
-        }
+    for (let submitted of answers) {
+      const question = await Question.findById(submitted.questionId);
 
-        res.json({ message: 'Quiz submitted successfully', score });
-    } catch (error) {
-        res.status(500).json({ message: 'Error in submitting quiz', error: error.message });
+      if (question && question.answer === submitted.selectedOption) {
+        score++;
+      }
     }
+
+    return res.status(200).json({
+      message: "Quiz submitted successfully",
+      score,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
 };
+
+
 export {getQuestions, submitQuiz};
