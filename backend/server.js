@@ -23,7 +23,7 @@ const io = new Server(server, {
 
 //Middleware
 app.use(cors({
-  origin: 'https://exam-secure.vercel.app/',
+  origin: 'https://exam-secure.vercel.app',
   credentials: true
 }));
 
