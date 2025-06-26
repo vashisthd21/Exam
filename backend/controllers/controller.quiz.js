@@ -6,7 +6,7 @@ const getQuestions = async (req, res) => {
         const quiz = {};
 
         for( const subject of subjects) {
-            quiz[subject] = await Question.find({ subject }).limit(5);
+            quiz[subject] = await Question.find({ subject }).limit(3);
 
         }
         res.json(quiz);
