@@ -19,8 +19,8 @@
   "main": "backend/server.js",
   "type": "module",
   "scripts": {
-    "start": "nodemon -r dotenv/config --experimental-json-modules backend/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node -r dotenv/config backend/server.js",
+    "dev": "nodemon -r dotenv/config backend/server.js"
   },
   "author": "Shivam, Deepak Vashisth",
   "license": "ISC",

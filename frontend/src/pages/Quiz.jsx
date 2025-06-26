@@ -2,24 +2,28 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:5000');
+const socket = io('https://exam-86ot.onrender.com');
 
 export default function Quiz() {
   const [quiz, setQuiz] = useState({});
   const [subjects, setSubjects] = useState([]); // list of subjects
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+<<<<<<< HEAD
   const [answers, setAnswers] = useState([]);  //stores answers
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0); 
+=======
+  const [selectedAnswers, setSelectedAnswers] = useState({}); // store answers
+>>>>>>> upstream/main
   const userId = '123abc';
 
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const token = localStorage.getItem('token'); // if using token from localStorage
+                const token = localStorage.getItem('token'); // if using token from localStorage
 
-                const response = await axios.get('http://localhost:5000/api/quiz/start', {
+                const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
                     headers: token ? {
                         Authorization: `Bearer ${token}`
                     } : {},
@@ -62,6 +66,7 @@ export default function Quiz() {
       .slice(0, currentSubjectIndex)
       .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
 
+<<<<<<< HEAD
       //--------------storing answers ----------------
 
 const handleAnswerSelect = (qid, option) => {
@@ -70,8 +75,15 @@ const handleAnswerSelect = (qid, option) => {
   );
 };
 
+=======
+  const handleAnswerSelect = (option) => {
+    setSelectedAnswers({
+      ...selectedAnswers,
+      [`${currentSubject}-${currentQuestionIndex}`]: option,
+    });
+  };
+>>>>>>> upstream/main
 
-      // Function to got to next question or subject
   const goNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -92,6 +104,7 @@ const handleAnswerSelect = (qid, option) => {
     }
   };
 
+<<<<<<< HEAD
   // Fnuction to submit the quiz
   const handleSubmit = async () => {
   try {
@@ -123,24 +136,35 @@ const handleAnswerSelect = (qid, option) => {
             <p style={{ fontSize: 18 }}>Your Score: {score} / {totalQuestions}</p>
           </div>
         ) : (
+=======
+  return (
+>>>>>>> upstream/main
     <div style={styles.container}>
       <h1>Quiz - {currentSubject}</h1>
       <div style={styles.questionBox}>
         <p style={styles.questionNumber}>
           Question {questionNumber} of {totalQuestions}
         </p>
-
         <p style={styles.questionText}>{currentQuestion.question}</p>
-
         <div style={styles.options}>
           {currentQuestion.options.map((opt, idx) => (
             <label key={idx} style={styles.optionLabel}>
               <input
+<<<<<<< HEAD
               type="radio"
               name={`q-${currentQuestion._id}`}
               value={opt}
               onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
             />
+=======
+                type="radio"
+                name={`question-${currentSubject}-${currentQuestionIndex}`}
+                value={opt}
+                checked={selectedAnswers[`${currentSubject}-${currentQuestionIndex}`] === opt}
+                onChange={() => handleAnswerSelect(opt)}
+                style={styles.radioInput}
+              />
+>>>>>>> upstream/main
               {opt}
             </label>
           ))}
@@ -161,6 +185,7 @@ const handleAnswerSelect = (qid, option) => {
         >
           Next
         </button>
+<<<<<<< HEAD
         
         <button
         onClick={handleSubmit}
@@ -172,6 +197,8 @@ const handleAnswerSelect = (qid, option) => {
         >
         Submit
       </button>
+=======
+>>>>>>> upstream/main
       </div>
     </div>
   );

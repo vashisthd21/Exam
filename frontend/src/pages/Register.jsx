@@ -10,7 +10,7 @@ export default function Register() {
 
     const register = async(e) =>{
         e.preventDefault();
-        await axios.post('http://localhost:3000/api/auth/register', form);     //Why to write full URL?
+        await axios.post('https://exam-86ot.onrender.com/api/auth/register', form);     //Why to write full URL?
         alert('Registered successfully');
     };
 

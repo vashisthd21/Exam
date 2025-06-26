@@ -8,6 +8,10 @@ import authMiddleware from '../middleware/authmiddleware.js';
 router.get('/start', authMiddleware, getQuestions);
 // router.get('/start', getQuestions);
 // console.log(req.body);
+<<<<<<< HEAD
 router.post('/submit', submitQuiz);
+=======
+router.post('./submit', submitQuiz);
+>>>>>>> upstream/main
 
 export default router;
