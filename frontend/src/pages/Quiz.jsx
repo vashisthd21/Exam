@@ -15,7 +15,14 @@ export default function Quiz() {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/quiz/start');
+        const token = localStorage.getItem('token'); // if using token from localStorage
+
+                const response = await axios.get('http://localhost:5000/api/quiz/start', {
+                    headers: token ? {
+                        Authorization: `Bearer ${token}`
+                    } : {},
+                    withCredentials: true // for cookie-based JWT auth
+                });
         setQuiz(response.data);
         setSubjects(Object.keys(response.data));
         setCurrentSubjectIndex(0);

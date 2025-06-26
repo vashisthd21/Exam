@@ -37,6 +37,7 @@ const login = async (req, res) => {
         };
 
         console.log('User logged in:', user.name);
+        console.log('Token generated:', token);
 
         return res
             .cookie("BearerToken", token, options)
