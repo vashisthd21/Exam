@@ -9,13 +9,13 @@ export default function Quiz() {
   const [subjects, setSubjects] = useState([]); // list of subjects
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-<<<<<<< HEAD
+
   const [answers, setAnswers] = useState([]);  //stores answers
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0); 
-=======
+
   const [selectedAnswers, setSelectedAnswers] = useState({}); // store answers
->>>>>>> upstream/main
+
   const userId = '123abc';
 
   useEffect(() => {
@@ -66,7 +66,6 @@ export default function Quiz() {
       .slice(0, currentSubjectIndex)
       .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
 
-<<<<<<< HEAD
       //--------------storing answers ----------------
 
 const handleAnswerSelect = (qid, option) => {
@@ -75,14 +74,13 @@ const handleAnswerSelect = (qid, option) => {
   );
 };
 
-=======
   const handleAnswerSelect = (option) => {
     setSelectedAnswers({
       ...selectedAnswers,
       [`${currentSubject}-${currentQuestionIndex}`]: option,
     });
   };
->>>>>>> upstream/main
+
 
   const goNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -104,7 +102,6 @@ const handleAnswerSelect = (qid, option) => {
     }
   };
 
-<<<<<<< HEAD
   // Fnuction to submit the quiz
   const handleSubmit = async () => {
   try {
@@ -136,9 +133,8 @@ const handleAnswerSelect = (qid, option) => {
             <p style={{ fontSize: 18 }}>Your Score: {score} / {totalQuestions}</p>
           </div>
         ) : (
-=======
+
   return (
->>>>>>> upstream/main
     <div style={styles.container}>
       <h1>Quiz - {currentSubject}</h1>
       <div style={styles.questionBox}>
@@ -150,13 +146,13 @@ const handleAnswerSelect = (qid, option) => {
           {currentQuestion.options.map((opt, idx) => (
             <label key={idx} style={styles.optionLabel}>
               <input
-<<<<<<< HEAD
+
               type="radio"
               name={`q-${currentQuestion._id}`}
               value={opt}
               onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
             />
-=======
+
                 type="radio"
                 name={`question-${currentSubject}-${currentQuestionIndex}`}
                 value={opt}
@@ -164,7 +160,7 @@ const handleAnswerSelect = (qid, option) => {
                 onChange={() => handleAnswerSelect(opt)}
                 style={styles.radioInput}
               />
->>>>>>> upstream/main
+
               {opt}
             </label>
           ))}
@@ -185,7 +181,7 @@ const handleAnswerSelect = (qid, option) => {
         >
           Next
         </button>
-<<<<<<< HEAD
+
         
         <button
         onClick={handleSubmit}
@@ -197,8 +193,7 @@ const handleAnswerSelect = (qid, option) => {
         >
         Submit
       </button>
-=======
->>>>>>> upstream/main
+
       </div>
     </div>
   );
