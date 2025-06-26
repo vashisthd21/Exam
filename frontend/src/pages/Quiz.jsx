@@ -9,7 +9,7 @@ export default function Quiz() {
   const [subjects, setSubjects] = useState([]); // list of subjects
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState({}); // store answers
+  const [answers, setAnswers] = useState([]);  //stores answers
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0); 
   const userId = '123abc';
@@ -63,12 +63,13 @@ export default function Quiz() {
       .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
 
       //--------------storing answers ----------------
-  const handleAnswerSelect = (option) => {
-    setSelectedAnswers({
-      ...selectedAnswers,
-      [`${currentSubject}-${currentQuestionIndex}`]: option,
-    });
-  };
+
+const handleAnswerSelect = (qid, option) => {
+  setAnswers((prev) =>
+    [...prev.filter((ans) => ans.qid !== qid), { qid, answer: option }]
+  );
+};
+
 
       // Function to got to next question or subject
   const goNext = () => {
@@ -99,7 +100,7 @@ export default function Quiz() {
       'http://localhost:5000/api/quiz/submit',
       {
         userId,
-        answers: selectedAnswers,
+        answers: answers,
       },
       {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -135,13 +136,11 @@ export default function Quiz() {
           {currentQuestion.options.map((opt, idx) => (
             <label key={idx} style={styles.optionLabel}>
               <input
-                type="radio"
-                name={`question-${currentSubject}-${currentQuestionIndex}`}
-                value={opt}
-                checked={selectedAnswers[`${currentSubject}-${currentQuestionIndex}`] === opt}
-                onChange={() => handleAnswerSelect(opt)}    //this is for submitting quiz
-                style={styles.radioInput}
-              />
+              type="radio"
+              name={`q-${currentQuestion._id}`}
+              value={opt}
+              onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
+            />
               {opt}
             </label>
           ))}
@@ -170,7 +169,7 @@ export default function Quiz() {
           backgroundColor: 'green',
           marginLeft: '10px',
         }}
-      >
+        >
         Submit
       </button>
       </div>
