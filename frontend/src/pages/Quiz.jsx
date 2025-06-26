@@ -6,31 +6,28 @@ const socket = io('https://exam-86ot.onrender.com');
 
 export default function Quiz() {
   const [quiz, setQuiz] = useState({});
-  const [subjects, setSubjects] = useState([]); // list of subjects
+  const [subjects, setSubjects] = useState([]);
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-  const [answers, setAnswers] = useState([]);  //stores answers
+  const [answers, setAnswers] = useState([]);
+  const [selectedAnswers, setSelectedAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [score, setScore] = useState(0); 
-
-  const [selectedAnswers, setSelectedAnswers] = useState({}); // store answers
+  const [score, setScore] = useState(0);
 
   const userId = '123abc';
 
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-                const token = localStorage.getItem('token'); // if using token from localStorage
+        const token = localStorage.getItem('token');
+        const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          withCredentials: true,
+        });
 
-                const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
-                    headers: token ? {
-                        Authorization: `Bearer ${token}`
-                    } : {},
-                    withCredentials: true // for cookie-based JWT auth
-                });
         setQuiz(response.data);
-        setSubjects(Object.keys(response.data));
+        const subjectList = Object.keys(response.data);
+        setSubjects(subjectList);
         setCurrentSubjectIndex(0);
         setCurrentQuestionIndex(0);
       } catch (error) {
@@ -48,10 +45,7 @@ export default function Quiz() {
     };
 
     document.addEventListener('visibilitychange', handleTabSwitch);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleTabSwitch);
-    };
+    return () => document.removeEventListener('visibilitychange', handleTabSwitch);
   }, []);
 
   if (subjects.length === 0) return <p>Loading quiz...</p>;
@@ -61,26 +55,18 @@ export default function Quiz() {
   const currentQuestion = questions[currentQuestionIndex];
 
   const totalQuestions = subjects.reduce((total, sub) => total + quiz[sub].length, 0);
-  const questionNumber =
-    subjects
-      .slice(0, currentSubjectIndex)
-      .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
+  const questionNumber = subjects
+    .slice(0, currentSubjectIndex)
+    .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
 
-      //--------------storing answers ----------------
-
-const handleAnswerSelect = (qid, option) => {
-  setAnswers((prev) =>
-    [...prev.filter((ans) => ans.qid !== qid), { qid, answer: option }]
-  );
-};
-
-  const handleAnswerSelect = (option) => {
-    setSelectedAnswers({
-      ...selectedAnswers,
+  // ✅ Merged function to store answer for both UI and backend
+  const handleAnswerSelect = (qid, option) => {
+    setAnswers((prev) => [...prev.filter((ans) => ans.qid !== qid), { qid, answer: option }]);
+    setSelectedAnswers((prev) => ({
+      ...prev,
       [`${currentSubject}-${currentQuestionIndex}`]: option,
-    });
+    }));
   };
-
 
   const goNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -102,38 +88,40 @@ const handleAnswerSelect = (qid, option) => {
     }
   };
 
-  // Fnuction to submit the quiz
   const handleSubmit = async () => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.post(
-      'http://localhost:5000/api/quiz/submit',
-      {
-        userId,
-        answers: answers,
-      },
-      {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        withCredentials: true,
-      }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        'https://exam-86ot.onrender.com/api/quiz/submit',
+        { userId, answers },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          withCredentials: true,
+        }
+      );
+
+      setSubmitted(true);
+      setScore(response.data.score);
+      alert('Quiz submitted successfully');
+    } catch (error) {
+      console.log('Error submitting quiz:', error);
+      alert('Error submitting quiz!');
+    }
+  };
+
+  // ✅ Submitted state UI
+  if (submitted) {
+    return (
+      <div style={styles.container}>
+        <h2>Quiz Submitted!</h2>
+        <p style={{ fontSize: 18 }}>
+          Your Score: {score} / {totalQuestions}
+        </p>
+      </div>
     );
-
-    setSubmitted(true);
-    setScore(response.data.score); // assuming backend returns score
-    alert('Quiz submitted successfully');
-  } catch (error) {
-    console.log('Error submitting quiz:', error);
-    alert('Error submitting quiz!');
   }
-};
 
-  return submitted ? (
-          <div style={styles.container}>
-            <h2>Quiz Submitted!</h2>
-            <p style={{ fontSize: 18 }}>Your Score: {score} / {totalQuestions}</p>
-          </div>
-        ) : (
-
+  // ✅ Main quiz UI
   return (
     <div style={styles.container}>
       <h1>Quiz - {currentSubject}</h1>
@@ -146,21 +134,13 @@ const handleAnswerSelect = (qid, option) => {
           {currentQuestion.options.map((opt, idx) => (
             <label key={idx} style={styles.optionLabel}>
               <input
-
-              type="radio"
-              name={`q-${currentQuestion._id}`}
-              value={opt}
-              onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
-            />
-
                 type="radio"
                 name={`question-${currentSubject}-${currentQuestionIndex}`}
                 value={opt}
                 checked={selectedAnswers[`${currentSubject}-${currentQuestionIndex}`] === opt}
-                onChange={() => handleAnswerSelect(opt)}
+                onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
                 style={styles.radioInput}
               />
-
               {opt}
             </label>
           ))}
@@ -181,19 +161,16 @@ const handleAnswerSelect = (qid, option) => {
         >
           Next
         </button>
-
-        
         <button
-        onClick={handleSubmit}
-        style={{
-          ...styles.navButton,
-          backgroundColor: 'green',
-          marginLeft: '10px',
-        }}
+          onClick={handleSubmit}
+          style={{
+            ...styles.navButton,
+            backgroundColor: 'green',
+            marginLeft: '10px',
+          }}
         >
-        Submit
-      </button>
-
+          Submit
+        </button>
       </div>
     </div>
   );
