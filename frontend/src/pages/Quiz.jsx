@@ -14,7 +14,7 @@ export default function Quiz() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
 
-  const userId = '123abc';
+  const userId = '123abc'; // Ideally get this from user state or localStorage
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -48,25 +48,17 @@ export default function Quiz() {
     return () => document.removeEventListener('visibilitychange', handleTabSwitch);
   }, []);
 
-  if (subjects.length === 0) return <p>Loading quiz...</p>;
-
-  const currentSubject = subjects[currentSubjectIndex];
-  const questions = quiz[currentSubject];
-  const currentQuestion = questions[currentQuestionIndex];
-
-  const totalQuestions = subjects.reduce((total, sub) => total + quiz[sub].length, 0);
-  const questionNumber = subjects
-    .slice(0, currentSubjectIndex)
-    .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
-
-  // ✅ Merged function to store answer for both UI and backend
-  handleAnswerSelect = (qid, option) => {
-  setAnswers((prev) => [
-    ...prev.filter((ans) => ans.qid !== qid),
-    { qid, answer: option }  // ✅ exactly what backend expects
-  ]);
-};
-
+  // ✅ This must be declared inside the component scope with `const`
+  const handleAnswerSelect = (qid, option) => {
+    setAnswers((prev) => [
+      ...prev.filter((ans) => ans.qid !== qid),
+      { qid, answer: option },
+    ]);
+    setSelectedAnswers((prev) => ({
+      ...prev,
+      [`${currentSubject}-${currentQuestionIndex}`]: option,
+    }));
+  };
 
   const goNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -109,7 +101,17 @@ export default function Quiz() {
     }
   };
 
-  // ✅ Submitted state UI
+  if (subjects.length === 0) return <p>Loading quiz...</p>;
+
+  const currentSubject = subjects[currentSubjectIndex];
+  const questions = quiz[currentSubject];
+  const currentQuestion = questions[currentQuestionIndex];
+
+  const totalQuestions = subjects.reduce((total, sub) => total + quiz[sub].length, 0);
+  const questionNumber = subjects
+    .slice(0, currentSubjectIndex)
+    .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
+
   if (submitted) {
     return (
       <div style={styles.container}>
@@ -121,7 +123,6 @@ export default function Quiz() {
     );
   }
 
-  // ✅ Main quiz UI
   return (
     <div style={styles.container}>
       <h1>Quiz - {currentSubject}</h1>
