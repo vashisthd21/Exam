@@ -6,7 +6,7 @@ const getQuestions = async (req, res) => {
         const quiz = {};
 
         for( const subject of subjects) {
-            quiz[subject] = await Question.find({ subject }).limit(3);
+            quiz[subject] = await Question.find({ subject }).limit(5);
 
         }
         res.json(quiz);
@@ -15,31 +15,26 @@ const getQuestions = async (req, res) => {
         res.status(500).json({message: 'Quiz fetching failed'});
     }
 };
-
 const submitQuiz = async (req, res) => {
-  try {
-    const { userId, answers } = req.body;
+    const { answers } = req.body;
     let score = 0;
 
-    for (let submitted of answers) {
-      const question = await Question.findById(submitted.questionId);
+    try {
+        for (let submitted of answers) {
+            const actual = await Question.findById(submitted.qid);
+            if (actual && actual.answer === submitted.answer) {
+                score++;
+            }
+        }
 
-      if (question && question.answer === submitted.selectedOption) {
-        score++;
-      }
+        return res.json({ message: 'Quiz submitted successfully', score });
+    } catch (error) {
+        console.error("Error submitting quiz:", error);
+        return res.status(500).json({ message: 'Error in submitting quiz', error: error.message });
     }
-
-    return res.status(200).json({
-      message: "Quiz submitted successfully",
-      score,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
 };
 
-
-export {getQuestions, submitQuiz};
+export {
+    getQuestions,
+    submitQuiz
+};

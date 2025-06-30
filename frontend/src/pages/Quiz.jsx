@@ -60,13 +60,13 @@ export default function Quiz() {
     .reduce((sum, sub) => sum + quiz[sub].length, 0) + currentQuestionIndex + 1;
 
   // ✅ Merged function to store answer for both UI and backend
-  const handleAnswerSelect = (qid, option) => {
-    setAnswers((prev) => [...prev.filter((ans) => ans.qid !== qid), { qid, answer: option }]);
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [`${currentSubject}-${currentQuestionIndex}`]: option,
-    }));
-  };
+  handleAnswerSelect = (qid, option) => {
+  setAnswers((prev) => [
+    ...prev.filter((ans) => ans.qid !== qid),
+    { qid, answer: option }  // ✅ exactly what backend expects
+  ]);
+};
+
 
   const goNext = () => {
     if (currentQuestionIndex < questions.length - 1) {
