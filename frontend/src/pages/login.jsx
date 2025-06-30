@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // ⬅️ Import Link
 import axios from 'axios';
 
 const Login = () => {
@@ -55,6 +55,14 @@ const Login = () => {
             Log In
           </button>
         </form>
+
+        {/* 🔗 Register link */}
+        <p style={styles.linkText}>
+          Don't have an account?{' '}
+          <Link to="/register" style={styles.link}>
+            Register
+          </Link>
+        </p>
       </div>
     </div>
   );
@@ -116,6 +124,16 @@ const styles = {
   error: {
     color: '#e53e3e',
     fontSize: '14px',
+    fontWeight: '600',
+  },
+  linkText: {
+    marginTop: '15px',
+    fontSize: '14px',
+    color: '#555',
+  },
+  link: {
+    color: '#5a67d8',
+    textDecoration: 'none',
     fontWeight: '600',
   },
 };
