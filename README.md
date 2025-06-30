@@ -10,8 +10,7 @@ A web-based platform for managing and conducting secure, student-friendly online
 - 📝 Exam creation and participation
 - 🔐 Secure session management
 - 📊 Performance tracking and result viewing
-- 📷 Profile photo upload
-- 🗃️ PostgreSQL database integration
+
 
 ---
 
@@ -19,7 +18,7 @@ A web-based platform for managing and conducting secure, student-friendly online
 
 - **Backend**: Node.js, Express.js  
 - **Frontend**: HTML, CSS, JavaScript  
-- **Database**: PostgreSQL (hosted on Supabase)  
+- **Database**: MongoDb
 - **Other Tools**: Multer (file upload), bcrypt (optional password hashing), express-session
 
 ---
