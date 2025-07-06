@@ -6,7 +6,7 @@ import {Server} from 'socket.io';
 import cookieParser from 'cookie-parser';
 
 // server.js or app.js
-const contactRoute = require('./routes/contact');
+import contactRoute from './routes/contact.js';
 
 import dotenv from 'dotenv';
 dotenv.config({
