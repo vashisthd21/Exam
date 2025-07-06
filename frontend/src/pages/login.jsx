@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // ⬅️ Import Link
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const Login = () => {
@@ -8,24 +8,27 @@ const Login = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  // States for hover styling
+  const [btnHover, setBtnHover] = useState(false);
+  const [emailHover, setEmailHover] = useState(false);
+  const [passHover, setPassHover] = useState(false);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
 
     try {
-      const response = await axios.post('https://exam-86ot.onrender.com/api/auth/login', {
-        email,
-        password,
-      });
-
+      const response = await axios.post('https://exam-86ot.onrender.com/api/auth/login', { email, password });
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-
       navigate('/dashboard');
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Login failed');
+      if (err.response && err.response.status === 401) {
+        setError('Invalid email or password. Please try again.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed. Please try again.');
+      }
     }
   };
 
@@ -40,7 +43,13 @@ const Login = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={styles.input}
+            style={{
+              ...styles.input,
+              borderColor: emailHover ? '#5a67d8' : '#ccc',
+              boxShadow: emailHover ? '0 0 8px #5a67d8' : 'none',
+            }}
+            onMouseEnter={() => setEmailHover(true)}
+            onMouseLeave={() => setEmailHover(false)}
           />
           <input
             type="password"
@@ -48,15 +57,32 @@ const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={styles.input}
+            style={{
+              ...styles.input,
+              borderColor: passHover ? '#5a67d8' : '#ccc',
+              boxShadow: passHover ? '0 0 8px #5a67d8' : 'none',
+            }}
+            onMouseEnter={() => setPassHover(true)}
+            onMouseLeave={() => setPassHover(false)}
           />
           {error && <p style={styles.error}>{error}</p>}
-          <button type="submit" style={styles.button}>
+          <button
+            type="submit"
+            style={{
+              ...styles.button,
+              backgroundColor: btnHover ? '#434190' : '#5a67d8',
+              boxShadow: btnHover
+                ? '0 12px 24px rgba(67, 65, 144, 0.6)'
+                : '0 8px 15px rgba(90, 103, 216, 0.4)',
+              transform: btnHover ? 'scale(1.05)' : 'scale(1)',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={() => setBtnHover(true)}
+            onMouseLeave={() => setBtnHover(false)}
+          >
             Log In
           </button>
         </form>
-
-        {/* 🔗 Register link */}
         <p style={styles.linkText}>
           Don't have an account?{' '}
           <Link to="/register" style={styles.link}>
@@ -70,71 +96,77 @@ const Login = () => {
 
 const styles = {
   pageContainer: {
-    minHeight: '90vh',
+    height: '97vh', // full viewport height
+    width: '99vw',  // full viewport width
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '20px',
+    padding: 0,    // no padding to cover full bg
+    margin: 0,     // no margin
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    overflow: 'hidden', // prevent scrollbars
   },
   container: {
     width: '100%',
-    maxWidth: '400px',
-    backgroundColor: '#fff',
-    borderRadius: '12px',
+    maxWidth: '420px',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: '16px',
     boxShadow:
-      '0 4px 6px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)',
-    padding: '30px 40px',
+      '0 15px 25px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.1)',
+    padding: '40px 50px',
     boxSizing: 'border-box',
     textAlign: 'center',
+    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   },
   title: {
-    marginBottom: '25px',
-    color: '#333',
-    fontWeight: '700',
-    fontSize: '28px',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    marginBottom: '30px',
+    color: '#2d3748',
+    fontWeight: '800',
+    fontSize: '32px',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px',
+    gap: '20px',
   },
   input: {
-    padding: '14px 15px',
+    padding: '15px 18px',
     fontSize: '16px',
-    borderRadius: '8px',
-    border: '1.5px solid #ddd',
+    borderRadius: '10px',
+    border: '1.8px solid #ccc',
     outline: 'none',
-    transition: 'border-color 0.3s ease',
     fontFamily: 'inherit',
+    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
   },
   button: {
-    padding: '14px',
-    backgroundColor: '#5a67d8',
+    padding: '16px',
     color: '#fff',
     border: 'none',
-    borderRadius: '8px',
-    fontSize: '18px',
-    fontWeight: '600',
+    borderRadius: '12px',
+    fontSize: '20px',
+    fontWeight: '700',
     cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
     fontFamily: 'inherit',
+    transition: 'all 0.3s ease',
   },
   error: {
     color: '#e53e3e',
     fontSize: '14px',
-    fontWeight: '600',
+    fontWeight: '700',
+    marginTop: '-10px',
+    marginBottom: '10px',
   },
   linkText: {
-    marginTop: '15px',
-    fontSize: '14px',
-    color: '#555',
+    marginTop: '25px',
+    fontSize: '15px',
+    color: '#4a5568',
   },
   link: {
     color: '#5a67d8',
     textDecoration: 'none',
-    fontWeight: '600',
+    fontWeight: '700',
+    transition: 'color 0.3s ease',
   },
 };
 

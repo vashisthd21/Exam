@@ -1,19 +1,22 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Register from './pages/Register.jsx';
 import Login from './pages/login.jsx';
+import LandingPage from './pages/LandingPage.jsx'; 
 import Dashboard from './pages/Dashboard.jsx';  // Import Dashboard
 import Quiz from './pages/Quiz.jsx';
-
+import ContactUs from './pages/ContactUs.jsx'; // Import ContactUs page
 function App() {
   return (
     <BrowserRouter>
       <div>
         {/* <h1 style={{ textAlign: 'center' }}>Welcome to Secure Exam App</h1> */}
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<LandingPage/>} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/contact" element={<ContactUs />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />  {/* Dashboard route */}
-          <Route path="/quiz" element={<Quiz />} />
+          <Route path="/quiz/:quizType" element={<Quiz />} />
         </Routes>
       </div>
     </BrowserRouter>

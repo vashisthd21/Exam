@@ -12,7 +12,7 @@ const register = async (req, res) => {
         const newUser = new User({ name, email, password: hashedPassword });
         await newUser.save();
 
-        const token = generateToken(newUser._id); // ✅ Fix: use newUser
+        const token = generateToken(newUser._id); // Fix: use newUser
 
         const options = {
             httpOnly: true,
@@ -54,8 +54,7 @@ const login = async (req, res) => {
             maxAge: 3600000 // 1 hour
         };
 
-        console.log('User logged in:', user.name);
-        console.log('Token generated:', token);
+        console.log("Login successful for user:", user); 
 
         return res
             .cookie("BearerToken", token, options)
@@ -70,7 +69,6 @@ const login = async (req, res) => {
     }
 };
 
-//Check for it
 export {
     register,
     login

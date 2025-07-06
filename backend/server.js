@@ -5,6 +5,8 @@ import http from 'http';
 import {Server} from 'socket.io';
 import cookieParser from 'cookie-parser';
 
+// server.js or app.js
+const contactRoute = require('./routes/contact');
 
 import dotenv from 'dotenv';
 dotenv.config({
@@ -16,13 +18,14 @@ const server = http.createServer(app);
 app.use(cookieParser());
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: 'https://exam-secure.vercel.app', 
     methods: ['GET', 'POST'],
   },
 });
 
 //Middleware
 app.use(cors({
+  // origin: 'http://localhost:5173', 
   origin: 'https://exam-secure.vercel.app',
   credentials: true
 }));
@@ -35,8 +38,9 @@ import quizroute from './routes/route.quiz.js'
 
 app.use('/api/auth', authroute);
 app.use('/api/quiz',quizroute);
+app.use('/api/contact', contactRoute);
 
-//mongoose connect
+//Db connect
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('MongoDB connected'))
     .catch(err=> console.log(err));
@@ -44,15 +48,10 @@ mongoose.connect(process.env.MONGO_URI)
 //Socket.io
 io.on('connection', (socket) => {
     console.log('User connected', socket.id);
-
-    //IF TAB IS SWITCHED
-    socket.on('tab-switched', (userId) =>{
-        console.log(`User ${userId} switched tabs`);
-        io.emit('alter-host',userId);
-    });
-
     socket.on('disconnect', () =>{
         console.log("User disconnected", socket.id);
+        alert("User disconnected");
+        window.location.href = '/login';
     });
 });
 
