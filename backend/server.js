@@ -50,7 +50,7 @@ io.on('connection', (socket) => {
     console.log('User connected', socket.id);
     socket.on('disconnect', () =>{
         console.log("User disconnected", socket.id);
-        alert("User disconnected");
+        // alert("User disconnected");
         window.location.href = '/login';
     });
 });
