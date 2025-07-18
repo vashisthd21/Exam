@@ -117,6 +117,46 @@ export default function Quiz() {
   const currentQuestion = questions[currentQuestionIndex];
 
   useEffect(() => {
+    //Enter the full screen
+    const goFullscreen = () => {
+      const doce1 = document.documentElement; // js to enter full screen
+      if(doce1.requestFullscreen)
+          doce1.requestFullscreen();
+      else if(doce1.webkitRequestFullscreen) 
+          doce1.webkitRequestFullscreen();
+      else if(doce1.msRequestFullscreen)
+          doce1.msRequestFullscreen();
+    }
+
+    goFullscreen();
+
+    //Get permission for cam and mic
+    const requestMediaPermissions = async() => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        //Optional: attach to a hidden videos for preview
+        const videoElement = document.createElement('video');
+        videoElement.srcObject = stream;
+        videoElement.muted = true;
+        videoElement.autoplay =true;
+        videoElement.style.diplay = 'none';
+        document.body.appendChild(videoElement);
+      } catch(err) {
+        alert('Camera and mic permissions are required');
+        socket.emit('permission-denied', {userId});
+      }
+    };
+
+    requestMediaPermissions();
+
+    //If exit fullscreen
+    document.addEventListener("fullscreenchange", () => {
+      if(!document.fullscreenElement) {
+        alert("You exited fullscreen!");
+        socket.emit('fullscreen-exit', {userId});
+      }
+    });
+
     setTimeLeft(QUESTION_TIME);
     setTimeUp(false);
 
