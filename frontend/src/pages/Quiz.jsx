@@ -4,9 +4,12 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import { debounce } from 'lodash';
 import CameraFeed from './CameraFeed';
-const navigate = useNavigate();
+import { useNavigate } from 'react-router-dom';
 
-const socket = io('https://exam-86ot.onrender.com');
+
+// const socket = io('https://exam-86ot.onrender.com');
+const socket = io('http://localhost:5000'); // Use your backend URL here
+
 
 export default function Quiz() {
   const [quiz, setQuiz] = useState({});
@@ -20,7 +23,7 @@ export default function Quiz() {
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
+  const navigate = useNavigate(); 
   const QUESTION_TIME = 30; // 30 for test purpose
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
   const [timeUp, setTimeUp] = useState(false);
@@ -29,7 +32,9 @@ export default function Quiz() {
   const { quizType } = useParams();
 
   const goToDashboard = () => {
+    // const navigate = useNavigate();
     navigate('/dashboard');
+    // window.location.href = '/dashboard'; // Redirect to dashboard
   };
 
   const handleTabSwitchRef = useRef();
@@ -54,7 +59,8 @@ export default function Quiz() {
         console.log('Fetching quiz for quizType:', quizType);
 
         const token = localStorage.getItem('token');
-        const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
+        // const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
+        const response = await axios.get('http://localhost:5000/api/quiz/start', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           params: { quizType },
           withCredentials: true,
@@ -217,7 +223,8 @@ export default function Quiz() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        'https://exam-86ot.onrender.com/api/quiz/submit',
+        // 'https://exam-86ot.onrender.com/api/quiz/submit',
+        'http://localhost:5000/api/quiz/submit',
         { userId, answers },
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -235,7 +242,29 @@ export default function Quiz() {
       setSubmitting(false);
     }
   };
+   // Face detection handlers with alert cooldown (to avoid spam)
+  const onMultipleFaces = () => {
+    if (!alertCooldownRef.current.multipleFaces) {
+      alertCooldownRef.current.multipleFaces = true;
+      alert('Multiple faces detected! Please stay alone.');
+      socket.emit('multiple-faces', { userId });
+      setTimeout(() => {
+        alertCooldownRef.current.multipleFaces = false;
+      }, 5000); // 5 sec cooldown
+    }
+  };
 
+  const onNoFace = () => {
+    if (!alertCooldownRef.current.noFace) {
+      alertCooldownRef.current.noFace = true;
+      alert('No face detected. Auto-submitting quiz.');
+      handleSubmit();
+      socket.emit('no-face', { userId });
+      setTimeout(() => {
+        alertCooldownRef.current.noFace = false;
+      }, 5000); // 5 sec cooldown
+    }
+  };
   if (loading) {
     return <p style={styles.loading}>Loading quiz...</p>;
   }
@@ -355,7 +384,12 @@ export default function Quiz() {
           </button>
         </div>
       </div>
-      <CameraFeed />
+      <div style={styles.cameraWrapper}>
+        <CameraFeed
+          onMultipleFacesDetected={onMultipleFaces}
+          onNoFaceDetected={onNoFace}
+        />
+      </div>
     </div>
   );
 }
