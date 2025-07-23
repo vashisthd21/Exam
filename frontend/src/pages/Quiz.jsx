@@ -4,6 +4,7 @@ import axios from 'axios';
 import io from 'socket.io-client';
 import { debounce } from 'lodash';
 import CameraFeed from './CameraFeed';
+const navigate = useNavigate();
 
 const socket = io('https://exam-86ot.onrender.com');
 
@@ -28,7 +29,7 @@ export default function Quiz() {
   const { quizType } = useParams();
 
   const goToDashboard = () => {
-    window.location.href = '/dashboard';
+    navigate('/dashboard');
   };
 
   const handleTabSwitchRef = useRef();
