@@ -7,8 +7,8 @@ import CameraFeed from './CameraFeed';
 import { useNavigate } from 'react-router-dom';
 
 
-// const socket = io('https://exam-86ot.onrender.com');
-const socket = io('http://localhost:5000'); // Use your backend URL here
+const socket = io('https://exam-86ot.onrender.com');
+// const socket = io('http://localhost:5000'); // Use your backend URL here
 
 
 export default function Quiz() {
@@ -59,8 +59,8 @@ export default function Quiz() {
         console.log('Fetching quiz for quizType:', quizType);
 
         const token = localStorage.getItem('token');
-        // const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
-        const response = await axios.get('http://localhost:5000/api/quiz/start', {
+        const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
+        // const response = await axios.get('http://localhost:5000/api/quiz/start', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           params: { quizType },
           withCredentials: true,
@@ -223,8 +223,8 @@ export default function Quiz() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        // 'https://exam-86ot.onrender.com/api/quiz/submit',
-        'http://localhost:5000/api/quiz/submit',
+        'https://exam-86ot.onrender.com/api/quiz/submit',
+        // 'http://localhost:5000/api/quiz/submit',
         { userId, answers },
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
