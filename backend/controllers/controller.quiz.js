@@ -1,7 +1,7 @@
 import Question from '../models/model.quiz.js';
 import User from '../models/model.user.js';
 const getQuestions = async (req, res) => {
-  const { quizType } = req.query; // Get quizType from query params (20, 30, subject)
+  const { quizType } = req.query; 
 
   try {
     const questions = await Question.find().lean();
@@ -10,7 +10,6 @@ const getQuestions = async (req, res) => {
       return res.status(404).json({ message: 'No quiz data found' });
     }
 
-    // Handle the different quiz types
     let selectedQuestions = [];
 
     if (quizType === '20') {
@@ -20,7 +19,7 @@ const getQuestions = async (req, res) => {
       // Select 30 random questions
       selectedQuestions = getRandomQuestions(questions, 30);
     } else if (quizType === 'subject') {
-      // Group by subject as before
+      // Group by subject 
       const grouped = questions.reduce((acc, q) => {
         if (!acc[q.subject]) acc[q.subject] = [];
         acc[q.subject].push({
@@ -31,12 +30,11 @@ const getQuestions = async (req, res) => {
         });
         return acc;
       }, {});
-      return res.json(grouped);  // Send the grouped response for subject-wise quiz
+      return res.json(grouped); 
     } else {
       return res.status(400).json({ message: 'Invalid quiz type specified' });
     }
 
-    // Return selected questions based on quiz type (20 or 30 questions)
     res.json(selectedQuestions);
   } catch (error) {
     console.error('Error fetching quiz questions:', error);
@@ -44,22 +42,18 @@ const getQuestions = async (req, res) => {
   }
 };
 
-// Helper function to select random questions
 const getRandomQuestions = (questions, count) => {
   const shuffled = [...questions].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 };
 const submitQuiz = async (req, res) => {
   const { answers } = req.body;
-  // if (!req.user || !req.user.id) {
-  //   return res.status(401).json({ message: 'Unauthorized' });
-  // }
+  
   try {
-    // Check if user already submitted quiz
     const user = await User.findById(req.user.id);
     // if (user.quizSubmitted) {
     //   return res.status(400).json({ message: 'You have already submitted the quiz', score: user.quizScore });
-    // }
+    // } // this part of code is giving error, so commenting it out for now
 
     // Fetch all questions
     const questions = await Question.find().lean();
@@ -78,7 +72,6 @@ const submitQuiz = async (req, res) => {
       }
     }
 
-    // Update user document
     user.quizSubmitted = true;
     user.quizScore = score;
     await user.save();

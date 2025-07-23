@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import io from 'socket.io-client';
 import { debounce } from 'lodash';
+import CameraFeed from './CameraFeed';
 
 const socket = io('https://exam-86ot.onrender.com');
 
@@ -131,23 +132,23 @@ export default function Quiz() {
     goFullscreen();
 
     //Get permission for cam and mic
-    const requestMediaPermissions = async() => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-        //Optional: attach to a hidden videos for preview
-        const videoElement = document.createElement('video');
-        videoElement.srcObject = stream;
-        videoElement.muted = true;
-        videoElement.autoplay =true;
-        videoElement.style.diplay = 'none';
-        document.body.appendChild(videoElement);
-      } catch(err) {
-        alert('Camera and mic permissions are required');
-        socket.emit('permission-denied', {userId});
-      }
-    };
+    // const requestMediaPermissions = async() => {
+    //   try {
+    //     const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+    //     //Optional: attach to a hidden videos for preview
+    //     const videoElement = document.createElement('video');
+    //     videoElement.srcObject = stream;
+    //     videoElement.muted = true;
+    //     videoElement.autoplay =true;
+    //     videoElement.style.diplay = 'none';
+    //     document.body.appendChild(videoElement);
+    //   } catch(err) {
+    //     alert('Camera and mic permissions are required');
+    //     socket.emit('permission-denied', {userId});
+    //   }
+    // };
 
-    requestMediaPermissions();
+    // requestMediaPermissions();
 
     //If exit fullscreen
     document.addEventListener("fullscreenchange", () => {
@@ -353,6 +354,7 @@ export default function Quiz() {
           </button>
         </div>
       </div>
+      <CameraFeed />
     </div>
   );
 }

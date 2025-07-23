@@ -9,7 +9,6 @@ function App() {
   return (
     <BrowserRouter>
       <div>
-        {/* <h1 style={{ textAlign: 'center' }}>Welcome to Secure Exam App</h1> */}
         <Routes>
           <Route path="/" element={<LandingPage/>} />
           <Route path="/login" element={<Login />} />

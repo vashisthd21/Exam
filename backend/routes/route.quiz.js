@@ -6,12 +6,8 @@ import {getQuestions, submitQuiz} from '../controllers/controller.quiz.js';
 import authMiddleware from '../middleware/authmiddleware.js';
 
 router.get('/start', authMiddleware, getQuestions);
-// router.get('/start', getQuestions);
-// console.log(req.body);
-
 router.post('/submit', authMiddleware, submitQuiz);
 
-// router.post('./submit', submitQuiz);
 
 
 export default router;
