@@ -33,8 +33,8 @@ export default function Quiz() {
 
   const goToDashboard = () => {
     // const navigate = useNavigate();
-    navigate('/dashboard');
-    // window.location.href = '/dashboard'; // Redirect to dashboard
+    // navigate('/dashboard');
+    window.location.href = '/dashboard'; // Redirect to dashboard
   };
 
   const handleTabSwitchRef = useRef();
