@@ -1,292 +1,271 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-
+const API = import.meta.env.VITE_API_BASE_URL;
 const LandingPage = () => {
-  // Contact form state for footer
   const [contact, setContact] = useState({ name: '', email: '', message: '' });
-  const [contactStatus, setContactStatus] = useState('');
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleContactChange = (e) => {
-    setContact(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => {
+    setContact({ ...contact, [e.target.name]: e.target.value });
   };
 
-  const handleContactSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!formData.name || !formData.email || !formData.message) {
-    setStatus('Please fill in all fields.');
-    return;
-  }
-
-  try {
-    const response = await fetch('https://exam-86ot.onrender.com/api/contact', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      setStatus('Thank you for contacting us! We will get back to you shortly.');
-      setFormData({ name: '', email: '', message: '' });
-    } else {
-      setStatus(data.error || 'Something went wrong.');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!contact.name || !contact.email || !contact.message) {
+      setStatus('Please fill all fields.');
+      return;
     }
-  } catch (err) {
-    setStatus('Failed to send message.');
-    console.error(err);
-  }
-};
 
+    setLoading(true);
+    setStatus('');
+
+    try {
+      const res = await fetch(`${API}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contact),
+      });
+
+      if (res.ok) {
+        setStatus('Message sent successfully.');
+        setContact({ name: '', email: '', message: '' });
+      } else {
+        setStatus('Something went wrong.');
+      }
+    } catch {
+      setStatus('Server error.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
+      {/* NAVBAR */}
       <header style={styles.header}>
         <div style={styles.navbar}>
-          <h1 style={styles.logo}>Exam Secure</h1>
+          <h1 style={styles.logo}>ExamSecure</h1>
           <nav style={styles.navLinks}>
             <Link to="/" style={styles.navLink}>Home</Link>
             <Link to="/login" style={styles.navLink}>Login</Link>
-            <Link to="/contact" style={styles.navLink}>Contact Us</Link>
+            <Link to="/register" style={styles.navButton}>Get Started</Link>
           </nav>
         </div>
       </header>
 
-      <main style={styles.main}>
-        <section style={styles.heroSection}>
-          <h2 style={styles.heroTitle}>Test Your Knowledge & Ace Your UPSC Exams</h2>
+      {/* HERO */}
+      <section style={styles.hero}>
+        <div style={styles.heroInner}>
+          <h2 style={styles.heroTitle}>Secure Online Exam Platform</h2>
           <p style={styles.heroSubtitle}>
-            Exam Secure is your trusted platform for practicing UPSC exam questions with confidence.
+            A distraction-free, exam-focused environment built for serious aspirants.
           </p>
-          <Link to="/register" style={styles.ctaButton}>Get Started</Link>
-        </section>
-
-        <section style={styles.featuresSection}>
-          <h3 style={styles.featuresTitle}>Why Choose Exam Secure?</h3>
-          <div style={styles.featuresGrid}>
-            <div style={styles.featureCard}>
-              <h4>Realistic Practice</h4>
-              <p>Take quizzes that simulate the actual UPSC exam environment.</p>
-            </div>
-            <div style={styles.featureCard}>
-              <h4>Track Your Progress</h4>
-              <p>Monitor your quiz scores and improve steadily over time.</p>
-            </div>
-            <div style={styles.featureCard}>
-              <h4>Secure & Reliable</h4>
-              <p>Your data and progress are safe with top-notch security.</p>
-            </div>
+          <div style={styles.heroActions}>
+            <Link to="/register" style={styles.primaryBtn}>Start Free</Link>
+            <Link to="/login" style={styles.secondaryBtn}>Login</Link>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
+      {/* STATS */}
+      <section style={styles.statsSection}>
+        <div style={styles.statsContainer}>
+          <div style={styles.statCard}>
+            <h3>50K+</h3>
+            <p>Students</p>
+          </div>
+          <div style={styles.statCard}>
+            <h3>10K+</h3>
+            <p>Practice Tests</p>
+          </div>
+          <div style={styles.statCard}>
+            <h3>92%</h3>
+            <p>Success Rate</p>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES */}
+      <section style={styles.section}>
+        <h3 style={styles.sectionTitle}>Why Choose ExamSecure?</h3>
+        <div style={styles.grid}>
+          <Feature title="Real Exam Environment" desc="Timed tests with strict rules to simulate real exams." />
+          <Feature title="Advanced Analytics" desc="Detailed insights into accuracy, speed, and progress." />
+          <Feature title="Highly Secure" desc="Anti-cheat systems, login protection, and monitoring." />
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section style={styles.altSection}>
+        <h3 style={styles.sectionTitle}>How It Works</h3>
+        <div style={styles.grid}>
+          <Step num="1" title="Register" desc="Create your account in seconds." />
+          <Step num="2" title="Attempt Tests" desc="Practice in exam-like conditions." />
+          <Step num="3" title="Analyze & Improve" desc="Learn from performance insights." />
+        </div>
+      </section>
+
+      {/* TRUST */}
+      <section style={styles.section}>
+        <h3 style={styles.sectionTitle}>Built for Trust & Security</h3>
+        <div style={styles.trustBox}>
+          <p>✔ Secure Authentication</p>
+          <p>✔ One-Device Login</p>
+          <p>✔ Tab-Switch Detection</p>
+          <p>✔ Encrypted Data</p>
+        </div>
+      </section>
+
+{/* FOOTER */}
       <footer style={styles.footer}>
-        <div style={styles.footerContent}>
-          <div style={styles.footerAbout}>
-            <h3 style={{color: 'white'}}>Exam Secure</h3>
-            <p>A platform for testing your knowledge and practicing for UPSC exams.</p>
+        <div style={styles.footerGrid}>
+          {/* BRAND */}
+          <div>
+            <h3 style={styles.footerLogo}>ExamSecure</h3>
+            <p style={styles.footerDesc}>
+              A secure exam platform for disciplined preparation.
+            </p>
+            <p style={styles.footerTag}>Discipline • Accuracy • Integrity</p>
           </div>
 
-          <div style={styles.footerContact}>
-            <h3 style={{color: 'white'}}>Contact Us</h3>
-            <form onSubmit={handleContactSubmit} style={styles.contactForm}>
-              <input
-                type="text"
-                name="name"
-                placeholder="Your Name"
-                value={contact.name}
-                onChange={handleContactChange}
-                style={styles.footerInput}
-                required
-              />
-              <input
-                type="email"
-                name="email"
-                placeholder="Your Email"
-                value={contact.email}
-                onChange={handleContactChange}
-                style={styles.footerInput}
-                required
-              />
-              <textarea
-                name="message"
-                placeholder="Your Message"
-                value={contact.message}
-                onChange={handleContactChange}
-                style={styles.footerTextarea}
-                required
-              />
-              <button type="submit" style={styles.footerButton}>Send</button>
-              {contactStatus && <p style={styles.contactStatus}>{contactStatus}</p>}
-            </form>
+          {/* LINKS */}
+          <div>
+            <h4 style={styles.footerHeading}>Quick Links</h4>
+            <p style={styles.footerLink}>Home</p>
+            <p style={styles.footerLink}>Login</p>
+            <p style={styles.footerLink}>Register</p>
+            <p style={styles.footerLink}>Privacy Policy</p>
           </div>
+
+          {/* CONTACT CARD */}
+          <form onSubmit={handleSubmit} style={styles.contactCard}>
+            <h4 style={styles.footerHeading}>Contact Us</h4>
+
+            <input
+              style={styles.input}
+              name="name"
+              placeholder="Your Name"
+              value={contact.name}
+              onChange={handleChange}
+            />
+
+            <input
+              style={styles.input}
+              name="email"
+              placeholder="Your Email"
+              value={contact.email}
+              onChange={handleChange}
+            />
+
+            <textarea
+              style={styles.textarea}
+              name="message"
+              placeholder="Your Message"
+              value={contact.message}
+              onChange={handleChange}
+            />
+
+            <button style={styles.submitBtn} disabled={loading}>
+              {loading ? 'Sending...' : 'Send Message'}
+            </button>
+
+            {status && <p style={styles.status}>{status}</p>}
+          </form>
         </div>
-        <div style={styles.footerBottom}>
-          <p>© {new Date().getFullYear()} Exam Secure. All rights reserved.</p>
-        </div>
+
+        <div style={styles.footerDivider} />
+
+        <p style={styles.footerBottom}>
+          © {new Date().getFullYear()} ExamSecure. All rights reserved.
+        </p>
       </footer>
+
     </>
   );
 };
 
+const Feature = ({ title, desc }) => (
+  <div style={styles.card}>
+    <h4>{title}</h4>
+    <p>{desc}</p>
+  </div>
+);
+
+const Step = ({ num, title, desc }) => (
+  <div style={styles.card}>
+    <span style={styles.stepNum}>{num}</span>
+    <h4>{title}</h4>
+    <p>{desc}</p>
+  </div>
+);
+
 const styles = {
-  header: {
-    backgroundColor: '#4c51bf',
-    padding: '15px 40px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-  },
-  navbar: {
-    maxWidth: '1100px',
-    margin: '0 auto',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  logo: {
-    color: 'white',
-    fontSize: '28px',
-    fontWeight: '700',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    cursor: 'default',
-  },
-  navLinks: {
-    display: 'flex',
-    gap: '25px',
-  },
-  navLink: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: '16px',
-    textDecoration: 'none',
-    transition: 'color 0.3s ease',
-  },
-  main: {
-    maxWidth: '1100px',
-    margin: '50px auto 100px',
-    padding: '0 20px',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  heroSection: {
-    textAlign: 'center',
-    marginBottom: '70px',
-  },
-  heroTitle: {
-    fontSize: '3rem',
-    fontWeight: '700',
-    color: '#2d3748',
-    marginBottom: '15px',
-  },
-  heroSubtitle: {
-    fontSize: '1.25rem',
-    color: '#4a5568',
-    marginBottom: '30px',
-  },
-  ctaButton: {
-    backgroundColor: '#4c51bf',
-    color: 'white',
-    padding: '14px 40px',
-    fontSize: '18px',
-    fontWeight: '700',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-block',
-    transition: 'background-color 0.3s ease',
-  },
-  featuresSection: {
-    textAlign: 'center',
-  },
-  featuresTitle: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    marginBottom: '40px',
-    color: '#2d3748',
-  },
-  featuresGrid: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '40px',
-    flexWrap: 'wrap',
-  },
-  featureCard: {
-    backgroundColor: '#edf2f7',
-    padding: '25px 20px',
-    borderRadius: '15px',
-    width: '300px',
-    boxShadow: '0 8px 20px rgba(0,0,0,0.1)',
-    fontWeight: '500',
-    color: '#4a5568',
-  },
-  footer: {
-    backgroundColor: '#2d3748',
-    padding: '40px 20px 20px',
-  },
-  footerContent: {
-    maxWidth: '1100px',
-    margin: '0 auto 20px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '50px',
-    flexWrap: 'wrap',
-    color: 'white',
-  },
-  footerAbout: {
-    flex: '1 1 350px',
-  },
-  footerContact: {
-    flex: '1 1 350px',
-  },
-  contactForm: {
+  header: { background: '#0b3a82', padding: '18px 40px' },
+  navbar: { maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  logo: { color: '#fff', fontWeight: 800, fontSize: 26 },
+  navLinks: { display: 'flex', gap: 20, alignItems: 'center' },
+  navLink: { color: '#dbeafe', textDecoration: 'none', fontWeight: 600 },
+  navButton: { background: '#2563eb', color: '#fff', padding: '8px 18px', borderRadius: 8, textDecoration: 'none', fontWeight: 700 },
+
+  hero: { background: 'linear-gradient(180deg, #0b3a82, #eaf1ff)', padding: '120px 20px' },
+  heroInner: { maxWidth: 900, margin: '0 auto', textAlign: 'center' },
+  heroTitle: { fontSize: '3.4rem', fontWeight: 800, color: '#fff' },
+  heroSubtitle: { color: '#dbeafe', fontSize: '1.25rem', margin: '20px auto 40px', maxWidth: 700 },
+  heroActions: { display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' },
+  primaryBtn: { background: '#2563eb', color: '#fff', padding: '14px 36px', borderRadius: 10, textDecoration: 'none', fontWeight: 700 },
+  secondaryBtn: { background: '#fff', color: '#2563eb', padding: '14px 36px', borderRadius: 10, textDecoration: 'none', fontWeight: 700 },
+
+  statsSection: { background: '#fff', padding: '60px 20px' },
+  statsContainer: { maxWidth: 1000, margin: '-100px auto 0', display: 'flex', justifyContent: 'center', gap: 30, flexWrap: 'wrap' },
+  statCard: { background: '#fff', padding: '30px 40px', borderRadius: 16, boxShadow: '0 12px 30px rgba(0,0,0,0.08)', textAlign: 'center', minWidth: 220 },
+
+  section: { padding: '90px 20px', textAlign: 'center' },
+  altSection: { padding: '90px 20px', background: '#f1f5f9', textAlign: 'center' },
+  sectionTitle: { fontSize: '2.4rem', fontWeight: 700, marginBottom: 50 },
+
+  grid: { display: 'flex', justifyContent: 'center', gap: 30, flexWrap: 'wrap' },
+  card: { background: '#fff', padding: 32, borderRadius: 16, width: 300, boxShadow: '0 12px 30px rgba(0,0,0,0.08)' },
+  stepNum: { fontSize: 28, fontWeight: 800, color: '#2563eb' },
+
+  trustBox: { maxWidth: 600, margin: '0 auto', textAlign: 'left', lineHeight: 2, fontSize: 16 },
+
+  footer: { background: '#0f172a', color: '#cbd5f5', padding: '80px 20px 30px' },
+  footerGrid: { maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 40 },
+
+  footerLogo: { fontSize: 26, fontWeight: 800, color: '#fff' },
+  footerDesc: { marginTop: 12, lineHeight: 1.6 },
+  footerTag: { marginTop: 10, fontSize: 14 },
+
+  footerHeading: { fontSize: 18, fontWeight: 700, marginBottom: 16, color: '#fff' },
+  footerLink: { fontSize: 14, marginBottom: 8, cursor: 'pointer' },
+
+  contactCard: {
+    background: '#020617',
+    padding: 24,
+    borderRadius: 16,
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: 12,
   },
-  footerInput: {
-    padding: '10px 14px',
-    borderRadius: '6px',
+
+  input: { padding: 10, borderRadius: 8, border: 'none' },
+  textarea: { padding: 10, borderRadius: 8, border: 'none', minHeight: 80 },
+
+  submitBtn: {
+    background: 'linear-gradient(135deg,#2563eb,#1d4ed8)',
+    color: '#fff',
+    padding: 12,
+    borderRadius: 10,
     border: 'none',
-    outline: 'none',
-    fontSize: '14px',
-  },
-  footerTextarea: {
-    padding: '10px 14px',
-    borderRadius: '6px',
-    border: 'none',
-    outline: 'none',
-    fontSize: '14px',
-    resize: 'vertical',
-    minHeight: '80px',
-  },
-  footerButton: {
-    backgroundColor: '#4c51bf',
-    border: 'none',
-    color: 'white',
-    padding: '12px 0',
-    fontSize: '16px',
-    fontWeight: '700',
-    borderRadius: '6px',
+    fontWeight: 700,
     cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
   },
-  contactStatus: {
-    marginTop: '8px',
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#68d391',
-  },
-  footerBottom: {
-    textAlign: 'center',
-    color: '#a0aec0',
-    fontSize: '14px',
-    paddingTop: '15px',
-    borderTop: '1px solid #4a5568',
-  },
+
+  status: { fontSize: 13, color: '#a7f3d0' },
+  footerDivider: { height: 1, background: 'rgba(255,255,255,0.1)', margin: '40px 0 20px' },
+  footerBottom: { textAlign: 'center', fontSize: 14, color: '#94a3b8' },
+
 };
 
 export default LandingPage;

@@ -1,14 +1,48 @@
 import mongoose from 'mongoose';
 
-const userSchema = new mongoose.Schema({
-    name: String,
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    totalScore: { type: Number, default: 0 },
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    quizSubmitted: {type: Boolean, default: false},
-    quizScore: {type: Number, default: 0},
-});
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
 
-const User = mongoose.model('User', userSchema);
-export default User;
+    // ❗ Password NOT required for Google users
+    password: {
+      type: String,
+      required: false,
+    },
+
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+
+    totalScore: {
+      type: Number,
+      default: 0,
+    },
+
+    quizSubmitted: {
+      type: Boolean,
+      default: false,
+    },
+
+    quizScore: {
+      type: Number,
+      default: 0,
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model('User', userSchema);

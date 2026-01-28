@@ -1,10 +1,15 @@
-import React from "react";
-import ReactDOM from "react-dom/client"; // ✅ correct package for React 18+
-import App from "./app.jsx"; // ✅ match the component name to your file
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import App from './app.jsx';
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <GoogleOAuthProvider clientId="551981807611-kbsns51rokstpua4a85f93m37ecsaiaa.apps.googleusercontent.com">
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </GoogleOAuthProvider>
   </React.StrictMode>
 );
