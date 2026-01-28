@@ -1,92 +1,138 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-
+import { GoogleLogin } from '@react-oauth/google';
+const API = import.meta.env.VITE_API_BASE_URL;
+console.log(API);
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // States for hover styling
-  const [btnHover, setBtnHover] = useState(false);
-  const [emailHover, setEmailHover] = useState(false);
-  const [passHover, setPassHover] = useState(false);
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
-      const response = await axios.post('https://exam-86ot.onrender.com/api/auth/login', { email, password });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      const res = await axios.post(
+        `${API}/api/auth/login`,
+        form
+      );
+
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/dashboard');
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        setError('Invalid email or password. Please try again.');
-      } else {
-        setError(err.response?.data?.message || 'Login failed. Please try again.');
-      }
+    } catch {
+      setError('Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async (cred) => {
+    try {
+      const res = await axios.post(
+        `${API}/api/auth/google`,
+        { token: cred.credential }
+      );
+
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/dashboard');
+    } catch(e){
+      console.log(e);
+      setError('Google login failed');
     }
   };
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.container}>
-        <h2 style={styles.title}>Secure Exam Login</h2>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <h2 style={styles.title}>Welcome Back</h2>
+        <p style={styles.subtitle}>
+          Log in to continue your secure exam journey
+        </p>
+
+        {/* GOOGLE LOGIN */}
+        <div style={styles.centerBlock}>
+          <GoogleLogin
+            onSuccess={handleGoogleLogin}
+            onError={() => setError('Google Sign-In Failed')}
+            width="100%"
+          />
+        </div>
+
+        <div style={styles.divider}>OR</div>
+
+        {/* LOGIN FORM */}
         <form onSubmit={handleLogin} style={styles.form}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{
-              ...styles.input,
-              borderColor: emailHover ? '#5a67d8' : '#ccc',
-              boxShadow: emailHover ? '0 0 8px #5a67d8' : 'none',
-            }}
-            onMouseEnter={() => setEmailHover(true)}
-            onMouseLeave={() => setEmailHover(false)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              ...styles.input,
-              borderColor: passHover ? '#5a67d8' : '#ccc',
-              boxShadow: passHover ? '0 0 8px #5a67d8' : 'none',
-            }}
-            onMouseEnter={() => setPassHover(true)}
-            onMouseLeave={() => setPassHover(false)}
-          />
+          <div style={styles.centerBlock}>
+            <input
+              name="email"
+              type="email"
+              placeholder="Email Address"
+              value={form.email}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.centerBlock}>
+            <div style={styles.passwordRow}>
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                style={styles.passwordInput}
+              />
+              <span
+                style={styles.showHide}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </span>
+            </div>
+          </div>
+
+          <div style={styles.centerBlock}>
+            <div style={styles.options}>
+              <label style={styles.remember}>
+                <input type="checkbox" />
+                Remember me
+              </label>
+              <span style={styles.forgot}>Forgot password?</span>
+            </div>
+          </div>
+
           {error && <p style={styles.error}>{error}</p>}
-          <button
-            type="submit"
-            style={{
-              ...styles.button,
-              backgroundColor: btnHover ? '#434190' : '#5a67d8',
-              boxShadow: btnHover
-                ? '0 12px 24px rgba(67, 65, 144, 0.6)'
-                : '0 8px 15px rgba(90, 103, 216, 0.4)',
-              transform: btnHover ? 'scale(1.05)' : 'scale(1)',
-              transition: 'all 0.3s ease',
-            }}
-            onMouseEnter={() => setBtnHover(true)}
-            onMouseLeave={() => setBtnHover(false)}
-          >
-            Log In
-          </button>
+
+          <div style={styles.centerBlock}>
+            <button type="submit" disabled={loading} style={styles.button}>
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+          </div>
         </form>
-        <p style={styles.linkText}>
-          Don't have an account?{' '}
+
+        <p style={styles.footerText}>
+          Don’t have an account?{' '}
           <Link to="/register" style={styles.link}>
-            Register
+            Sign up
           </Link>
         </p>
       </div>
@@ -95,78 +141,136 @@ const Login = () => {
 };
 
 const styles = {
-  pageContainer: {
-    height: '97vh', // full viewport height
-    width: '99vw',  // full viewport width
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  page: {
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg, #0b3a82, #eaf1ff)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 0,    // no padding to cover full bg
-    margin: 0,     // no margin
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    overflow: 'hidden', // prevent scrollbars
+    padding: 20,
+    fontFamily: "'Segoe UI', Tahoma, sans-serif",
   },
-  container: {
+
+  card: {
     width: '100%',
-    maxWidth: '420px',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: '16px',
-    boxShadow:
-      '0 15px 25px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.1)',
-    padding: '40px 50px',
-    boxSizing: 'border-box',
+    maxWidth: 420,
+    background: '#fff',
+    padding: '40px 35px',
+    borderRadius: 18,
+    boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
     textAlign: 'center',
-    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   },
+
   title: {
-    marginBottom: '30px',
-    color: '#2d3748',
-    fontWeight: '800',
-    fontSize: '32px',
+    fontSize: 30,
+    fontWeight: 800,
+    color: '#1e293b',
   },
+
+  subtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    marginBottom: 25,
+  },
+
+  divider: {
+    margin: '18px 0',
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: 600,
+  },
+
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: 14,
   },
+
+  /* SAME WIDTH CONTROLLER AS REGISTER */
+  centerBlock: {
+    width: '100%',
+    maxWidth: 340,
+    margin: '0 auto',
+  },
+
   input: {
-    padding: '15px 18px',
-    fontSize: '16px',
-    borderRadius: '10px',
-    border: '1.8px solid #ccc',
-    outline: 'none',
-    fontFamily: 'inherit',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+    width: '100%',
+    padding: '14px 16px',
+    fontSize: 16,
+    borderRadius: 10,
+    border: '1.5px solid #cbd5e1',
   },
-  button: {
-    padding: '16px',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '20px',
-    fontWeight: '700',
+
+  passwordRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  passwordInput: {
+    width: '100%',
+    padding: '14px 16px',
+    fontSize: 16,
+    borderRadius: 10,
+    border: '1.5px solid #cbd5e1',
+  },
+
+  showHide: {
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.3s ease',
+    whiteSpace: 'nowrap',
   },
+
+  options: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: 13,
+    color: '#475569',
+  },
+
+  remember: {
+    display: 'flex',
+    gap: 6,
+    alignItems: 'center',
+  },
+
+  forgot: {
+    color: '#2563eb',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
+
+  button: {
+    width: '100%',
+    padding: 14,
+    fontSize: 18,
+    fontWeight: 700,
+    background: '#2563eb',
+    color: '#fff',
+    borderRadius: 10,
+    border: 'none',
+    cursor: 'pointer',
+  },
+
   error: {
-    color: '#e53e3e',
-    fontSize: '14px',
-    fontWeight: '700',
-    marginTop: '-10px',
-    marginBottom: '10px',
+    color: '#dc2626',
+    fontSize: 14,
+    fontWeight: 600,
+    textAlign: 'center',
   },
-  linkText: {
-    marginTop: '25px',
-    fontSize: '15px',
-    color: '#4a5568',
+
+  footerText: {
+    marginTop: 20,
+    fontSize: 15,
+    color: '#475569',
   },
+
   link: {
-    color: '#5a67d8',
+    color: '#2563eb',
+    fontWeight: 700,
     textDecoration: 'none',
-    fontWeight: '700',
-    transition: 'color 0.3s ease',
   },
 };
 

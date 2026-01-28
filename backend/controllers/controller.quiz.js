@@ -1,10 +1,17 @@
 import Question from '../models/model.quiz.js';
 import User from '../models/model.user.js';
+import QuizAttempt from '../models/model.quizAttempt.js';
+
+/* ===========================
+   GET QUESTIONS
+=========================== */
 const getQuestions = async (req, res) => {
-  const { quizType } = req.query; 
+  const { quizType } = req.query;
 
   try {
-    const questions = await Question.find().lean();
+    const questions = await Question.find()
+      .select('-answer -explanation') // 🔒 NEVER send answer/explanation
+      .lean();
 
     if (!questions.length) {
       return res.status(404).json({ message: 'No quiz data found' });
@@ -13,78 +20,162 @@ const getQuestions = async (req, res) => {
     let selectedQuestions = [];
 
     if (quizType === '20') {
-      // Select 20 random questions
       selectedQuestions = getRandomQuestions(questions, 20);
-    } else if (quizType === '30') {
-      // Select 30 random questions
-      selectedQuestions = getRandomQuestions(questions, 30);
-    } else if (quizType === 'subject') {
-      // Group by subject 
-      const grouped = questions.reduce((acc, q) => {
-        if (!acc[q.subject]) acc[q.subject] = [];
-        acc[q.subject].push({
-          _id: q._id,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-        });
-        return acc;
-      }, {});
-      return res.json(grouped); 
-    } else {
-      return res.status(400).json({ message: 'Invalid quiz type specified' });
+      return res.json(selectedQuestions);
     }
 
-    res.json(selectedQuestions);
+    if (quizType === '30') {
+      selectedQuestions = getRandomQuestions(questions, 30);
+      return res.json(selectedQuestions);
+    }
+
+    if (quizType === 'subject') {
+      const grouped = questions.reduce((acc, q) => {
+        if (!acc[q.subject]) acc[q.subject] = [];
+        acc[q.subject].push(q);
+        return acc;
+      }, {});
+      return res.json(grouped);
+    }
+
+    return res.status(400).json({ message: 'Invalid quiz type' });
   } catch (error) {
-    console.error('Error fetching quiz questions:', error);
-    res.status(500).json({ message: 'Quiz fetching failed', error: error.message });
+    console.error('Error fetching quiz:', error);
+    res.status(500).json({ message: 'Quiz fetching failed' });
   }
 };
 
 const getRandomQuestions = (questions, count) => {
-  const shuffled = [...questions].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  return [...questions].sort(() => Math.random() - 0.5).slice(0, count);
 };
 const submitQuiz = async (req, res) => {
-  const { answers } = req.body;
-  
   try {
-    const user = await User.findById(req.user.id);
-    // if (user.quizSubmitted) {
-    //   return res.status(400).json({ message: 'You have already submitted the quiz', score: user.quizScore });
-    // } // this part of code is giving error, so commenting it out for now
+    const { answers, quizType, timeTaken, totalQuestions } = req.body;
+    const userId = req.user._id;
 
-    // Fetch all questions
-    const questions = await Question.find().lean();
-    if (!questions.length) return res.status(404).json({ message: 'Quiz not found' });
-
-    let score = 0;
-    for (let submitted of answers) {
-      const actual = questions.find(q => q._id.toString() === submitted.qid);
-      if (!actual) continue;
-
-      const correctAnswer = actual.options[actual.answer];
-      const submittedAnswer = submitted.answer;
-
-      if (correctAnswer.toString().trim().toLowerCase() === submittedAnswer.toString().trim().toLowerCase()) {
-        score++;
-      }
+    if (!answers || !answers.length) {
+      return res.status(400).json({ message: 'No answers submitted' });
     }
 
-    user.quizSubmitted = true;
-    user.quizScore = score;
-    await user.save();
+    const questionIds = answers.map(a => a.qid);
 
-    res.json({ message: 'Quiz submitted successfully', score });
+    const questions = await Question.find({
+      _id: { $in: questionIds },
+    }).select('answer').lean();
+
+    const answerMap = {};
+    questions.forEach(q => {
+      answerMap[q._id.toString()] = q.answer;
+    });
+
+    let score = 0;
+    const responses = [];
+
+    answers.forEach(({ qid, answer }) => {
+      const correctIndex = answerMap[qid];
+      if (correctIndex === undefined) return;
+
+      if (correctIndex === answer) {
+        score++;
+      }
+
+      responses.push({
+        questionId: qid,
+        selectedOption: answer,
+      });
+    });
+
+    const accuracy =
+      totalQuestions > 0
+        ? Math.round((score / totalQuestions) * 100)
+        : 0;
+
+    /* ================= SAVE ATTEMPT ================= */
+    const attempt = await QuizAttempt.create({
+      userId,
+      quizType,
+      totalQuestions,
+      score,
+      accuracy,
+      timeTaken,
+      responses, // ✅ stored as per schema
+    });
+
+    /* ================= UPDATE USER ================= */
+    await User.findByIdAndUpdate(userId, {
+      $inc: { totalScore: score },
+      $set: { quizSubmitted: true, quizScore: score },
+    });
+
+    /* ================= RESPONSE ================= */
+    return res.json({
+      attemptId: attempt._id,
+      score,
+      totalQuestions,
+      accuracy,
+      timeTaken,
+      quizType,
+      createdAt: attempt.createdAt,
+    });
   } catch (error) {
-    console.error('💥 Error in submitQuiz:', error);
-    res.status(500).json({ message: 'Error in submitting quiz', error: error.message });
+    console.error('💥 Submit quiz error:', error);
+    return res.status(500).json({ message: 'Error submitting quiz' });
+  }
+};
+const getQuizAttemptById = async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+    const userId = req.user._id;
+
+    const attempt = await QuizAttempt.findOne({
+      _id: attemptId,
+      userId,
+    })
+      .populate({
+        path: 'responses.questionId',
+        select:
+          'question options answer explanation subject year tags',
+      })
+      .lean();
+
+    if (!attempt) {
+      return res.status(404).json({ message: 'Attempt not found' });
+    }
+
+    const analysis = attempt.responses.map(r => {
+      const q = r.questionId;
+
+      return {
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.answer,
+        userAnswer: r.selectedOption,
+        isCorrect: q.answer === r.selectedOption,
+        explanation: q.explanation,
+        subject: q.subject,
+        year: q.year,
+        tags: q.tags,
+      };
+    });
+
+    return res.json({
+      attemptId: attempt._id,
+      score: attempt.score,
+      totalQuestions: attempt.totalQuestions,
+      accuracy: attempt.accuracy,
+      quizType: attempt.quizType,
+      timeTaken: attempt.timeTaken,
+      createdAt: attempt.createdAt,
+      analysis,
+    });
+  } catch (error) {
+    console.error('Get attempt error:', error);
+    res.status(500).json({ message: 'Failed to load analysis' });
   }
 };
 
-
 export {
-    getQuestions,
-    submitQuiz
+  getQuestions,
+  submitQuiz,
+  getQuizAttemptById
 };

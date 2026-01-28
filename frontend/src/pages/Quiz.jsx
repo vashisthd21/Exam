@@ -1,303 +1,212 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import io from 'socket.io-client';
 import { debounce } from 'lodash';
 import CameraFeed from './CameraFeed';
-import { useNavigate } from 'react-router-dom';
 
 
-const socket = io('https://exam-86ot.onrender.com');
-// const socket = io('http://localhost:5000'); // Use your backend URL here
-
-
+const API = import.meta.env.VITE_API_BASE_URL;
+const socket = io(`${API}`);
 export default function Quiz() {
-  const [quiz, setQuiz] = useState({});
-  const [subjects, setSubjects] = useState([]);
-  const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState([]);
-  const [selectedAnswers, setSelectedAnswers] = useState({});
+  const { quizType } = useParams();
+  const navigate = useNavigate();
+
+  const QUESTION_TIME = 30;
+
+  const [flatQuestions, setFlatQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const navigate = useNavigate(); 
-  const QUESTION_TIME = 30; // 30 for test purpose
-  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
-  const [timeUp, setTimeUp] = useState(false);
+  const [showExit, setShowExit] = useState(false);
 
-  const userId = '123abc'; 
-  const { quizType } = useParams();
+  const fullscreenAllowed = useRef(false);
+  const fullscreenStarted = useRef(false);
+  const timerRef = useRef(null);
 
-  const goToDashboard = () => {
-    // const navigate = useNavigate();
-    // navigate('/dashboard');
-    window.location.href = '/dashboard'; // Redirect to dashboard
-  };
-
-  const handleTabSwitchRef = useRef();
-
+  /* ================= FETCH QUIZ ================= */
   useEffect(() => {
-    // Reset states when quizType changes
-    setQuiz({});
-    setSubjects([]);
-    setCurrentSubjectIndex(0);
-    setCurrentQuestionIndex(0);
-    setAnswers([]);
-    setSelectedAnswers({});
-    setSubmitted(false);
-    setScore(0);
-    setTabSwitchCount(0);
-    setLoading(true);
-    setTimeLeft(QUESTION_TIME);
-    setTimeUp(false);
-
     const fetchQuiz = async () => {
       try {
-        console.log('Fetching quiz for quizType:', quizType);
-
         const token = localStorage.getItem('token');
-        const response = await axios.get('https://exam-86ot.onrender.com/api/quiz/start', {
-        // const response = await axios.get('http://localhost:5000/api/quiz/start', {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          params: { quizType },
-          withCredentials: true,
-        });
 
-        let data = response.data;
+        const res = await axios.get(
+            `${API}/api/quiz/start`,
+          {
+            params: { quizType },
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-        // Agar data array hai (flat questions array), to group by subject
-        if (Array.isArray(data)) {
-          const grouped = data.reduce((acc, question) => {
-            const subject = question.subject || 'General';
-            if (!acc[subject]) acc[subject] = [];
-            acc[subject].push(question);
-            return acc;
-          }, {});
-          data = grouped;
-        }
+        const flat = Array.isArray(res.data)
+          ? res.data
+          : Object.values(res.data).flat();
 
-        console.log('Quiz grouped by subject:', data);
-
-        setQuiz(data);
-        setSubjects(Object.keys(data));
+        setFlatQuestions(flat);
+        setTimeLeft(flat.length * QUESTION_TIME);
         setLoading(false);
-      } catch (error) {
-        console.error('Error fetching quiz:', error);
+      } catch (err) {
+        alert('Failed to load quiz');
         setLoading(false);
       }
     };
 
     fetchQuiz();
+  }, [quizType]);
 
-    // Debounced tab switch handler
-    handleTabSwitchRef.current = debounce(() => {
-      if (document.hidden) {
-        setTabSwitchCount((prevCount) => {
-          const newCount = prevCount + 1;
+  const q = flatQuestions[currentIndex];
 
-          if (newCount === 1 || newCount === 2) {
-            socket.emit('userLeft', { userId });
-            alert(`You have switched tabs ${newCount} time(s). Please stay on the quiz page to avoid disqualification.`);
-          } else if (newCount === 3) {
-            handleSubmit();
-          }
+  /* ================= FULLSCREEN ================= */
+  const requestFullscreen = async () => {
+    if (fullscreenStarted.current) return;
 
-          return newCount;
-        });
-      }
-    }, 1000);
-
-    document.addEventListener('visibilitychange', handleTabSwitchRef.current);
-
-    return () => {
-      if (handleTabSwitchRef.current) {
-        document.removeEventListener('visibilitychange', handleTabSwitchRef.current);
-        handleTabSwitchRef.current.cancel();
-      }
-    };
-  }, [quizType]); 
-
-  const currentSubject = subjects[currentSubjectIndex];
-  const questions = quiz[currentSubject] || [];
-  const currentQuestion = questions[currentQuestionIndex];
+    try {
+      await document.documentElement.requestFullscreen();
+      fullscreenStarted.current = true;
+      fullscreenAllowed.current = true;
+    } catch {}
+  };
 
   useEffect(() => {
-    //Enter the full screen
-    const goFullscreen = () => {
-      const doce1 = document.documentElement; // js to enter full screen
-      if(doce1.requestFullscreen)
-          doce1.requestFullscreen();
-      else if(doce1.webkitRequestFullscreen) 
-          doce1.webkitRequestFullscreen();
-      else if(doce1.msRequestFullscreen)
-          doce1.msRequestFullscreen();
-    }
-
-    goFullscreen();
-
-    //Get permission for cam and mic
-    // const requestMediaPermissions = async() => {
-    //   try {
-    //     const stream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-    //     //Optional: attach to a hidden videos for preview
-    //     const videoElement = document.createElement('video');
-    //     videoElement.srcObject = stream;
-    //     videoElement.muted = true;
-    //     videoElement.autoplay =true;
-    //     videoElement.style.diplay = 'none';
-    //     document.body.appendChild(videoElement);
-    //   } catch(err) {
-    //     alert('Camera and mic permissions are required');
-    //     socket.emit('permission-denied', {userId});
-    //   }
-    // };
-
-    // requestMediaPermissions();
-
-    //If exit fullscreen
-    document.addEventListener("fullscreenchange", () => {
-      if(!document.fullscreenElement) {
-        alert("You exited fullscreen!");
-        socket.emit('fullscreen-exit', {userId});
+    const onFullscreenChange = () => {
+      if (
+        fullscreenAllowed.current &&
+        !document.fullscreenElement &&
+        !submitted
+      ) {
+        alert('Fullscreen exited. Submitting exam.');
+        handleSubmit();
       }
-    });
+    };
 
-    setTimeLeft(QUESTION_TIME);
-    setTimeUp(false);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () =>
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, [submitted]);
 
-    const timerId = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerId);
-          setTimeUp(true);
+  /* ================= GLOBAL TIMER ================= */
+  useEffect(() => {
+    if (loading || submitted) return;
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          clearInterval(timerRef.current);
+          handleSubmit();
           return 0;
         }
-        return prev - 1;
+        return t - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timerId);
-  }, [currentSubjectIndex, currentQuestionIndex]);
+    return () => clearInterval(timerRef.current);
+  }, [loading, submitted]);
 
-  const handleAnswerSelect = (qid, selectedOption) => {
-    if (timeUp || submitted || submitting) return; 
-    setAnswers((prev) => {
-      const filtered = prev.filter((ans) => ans.qid !== qid);
-      return [...filtered, { qid, answer: selectedOption }];
-    });
+  /* ================= TAB SWITCH ================= */
+  useEffect(() => {
+    const handler = debounce(() => {
+      if (document.hidden && !submitted) {
+        socket.emit('tab-switch', { reason: 'visibility-change' });
+        handleSubmit();
+      }
+    }, 800);
 
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [`${currentSubject}-${currentQuestionIndex}`]: selectedOption,
-    }));
+    document.addEventListener('visibilitychange', handler);
+    return () =>
+      document.removeEventListener('visibilitychange', handler);
+  }, [submitted]);
+
+  /* ================= ANSWER ================= */
+  const selectAnswer = async (qid, optionIndex) => {
+    if (submitted || submitting) return;
+    await requestFullscreen();
+    setAnswers(prev => ({ ...prev, [qid]: optionIndex }));
   };
 
-  const goNext = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else if (currentSubjectIndex < subjects.length - 1) {
-      setCurrentSubjectIndex(currentSubjectIndex + 1);
-      setCurrentQuestionIndex(0);
-    }
-  };
-
-  const goPrev = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    } else if (currentSubjectIndex > 0) {
-      const prevSubIndex = currentSubjectIndex - 1;
-      const prevSubQuestions = quiz[subjects[prevSubIndex]] || [];
-      setCurrentSubjectIndex(prevSubIndex);
-      setCurrentQuestionIndex(prevSubQuestions.length - 1);
-    }
-  };
-
+  /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
-    if (submitting) return; // Prevent duplicate submits
+    if (submitted || submitting) return;
     setSubmitting(true);
-    console.log('Submitting answers:', answers);
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(
-        'https://exam-86ot.onrender.com/api/quiz/submit',
-        // 'http://localhost:5000/api/quiz/submit',
-        { userId, answers },
+
+      const payload = Object.entries(answers).map(
+        ([qid, answerIndex]) => ({
+          qid,
+          answer: answerIndex,
+
+        })
+      );
+
+      let quizTypeLabel = '';
+      if (quizType === '20') quizTypeLabel = 'Quick 20';
+      else if (quizType === '30') quizTypeLabel = 'Good 30';
+      else if (quizType === 'subject')
+        quizTypeLabel = 'Focused Subject Test';
+
+      const totalTime = flatQuestions.length * QUESTION_TIME;
+      const timeTaken = totalTime - timeLeft;
+
+      const res = await axios.post(
+        `${API}/api/quiz/submit`,
         {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          withCredentials: true,
+          answers: payload,
+          quizType: quizTypeLabel,
+          timeTaken,
+          totalQuestions: flatQuestions.length,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
+      setScore(res.data.score);
       setSubmitted(true);
-      setScore(response.data.score);
-      alert('Quiz submitted successfully');
-    } catch (error) {
-      console.log('Error submitting quiz:', error);
-      alert('Error submitting quiz!');
+
+      fullscreenAllowed.current = false;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    } catch (err) {
+      alert('Submission failed');
     } finally {
       setSubmitting(false);
     }
   };
-   // Face detection handlers with alert cooldown (to avoid spam)
-  const onMultipleFaces = () => {
-    if (!alertCooldownRef.current.multipleFaces) {
-      alertCooldownRef.current.multipleFaces = true;
-      alert('Multiple faces detected! Please stay alone.');
-      socket.emit('multiple-faces', { userId });
-      setTimeout(() => {
-        alertCooldownRef.current.multipleFaces = false;
-      }, 5000); // 5 sec cooldown
-    }
-  };
 
-  const onNoFace = () => {
-    if (!alertCooldownRef.current.noFace) {
-      alertCooldownRef.current.noFace = true;
-      alert('No face detected. Auto-submitting quiz.');
-      handleSubmit();
-      socket.emit('no-face', { userId });
-      setTimeout(() => {
-        alertCooldownRef.current.noFace = false;
-      }, 5000); // 5 sec cooldown
-    }
-  };
-  if (loading) {
-    return <p style={styles.loading}>Loading quiz...</p>;
-  }
-
-  if (!subjects.length || !questions.length) {
-    return <p style={styles.loading}>No questions available</p>;
-  }
-
-  if (!currentQuestion) {
-    return <p style={styles.loading}>No question found.</p>;
-  }
-
-  const totalQuestions = subjects.reduce(
-    (total, sub) => total + (quiz[sub]?.length || 0),
-    0
-  );
-
-  const questionNumber =
-    subjects
-      .slice(0, currentSubjectIndex)
-      .reduce((sum, sub) => sum + (quiz[sub]?.length || 0), 0) +
-    currentQuestionIndex +
-    1;
-
+  /* ================= RESULT ================= */
   if (submitted) {
+    const percentage = ((score / flatQuestions.length) * 100).toFixed(2);
+
     return (
-      <div style={styles.pageContainer}>
-        <div style={styles.resultBox}>
-          <h2 style={{ marginBottom: 20 }}>Quiz Submitted!</h2>
-          <p style={{ fontSize: 20, marginBottom: 30 }}>
-            Your Score: <strong>{score}</strong> / {totalQuestions}
+      <div style={styles.center}>
+        <div style={styles.resultCard}>
+          <h2 style={styles.title}>UPSC Mock Test Result</h2>
+
+          <div style={styles.scoreCircle}>
+            <span style={styles.scoreText}>{score}</span>
+            <span style={styles.totalText}>/ {flatQuestions.length}</span>
+          </div>
+
+          <p style={styles.percentage}>
+            Percentage: <strong>{percentage}%</strong>
           </p>
-          <button onClick={goToDashboard} style={styles.dashboardButton}>
+
+          <p style={styles.message}>
+            {percentage >= 60
+              ? 'Great work! Keep refining your answers.'
+              : 'Good attempt! Analyze mistakes and improve.'}
+          </p>
+
+          <button
+            style={styles.dashboardBtn}
+            onClick={() => navigate('/dashboard')}
+          >
             Go to Dashboard
           </button>
         </div>
@@ -305,231 +214,374 @@ export default function Quiz() {
     );
   }
 
+  if (loading || !q) {
+    return <p style={styles.loading}>Loading…</p>;
+  }
+
+  /* ================= UI ================= */
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.container}>
-        <h1 style={styles.subjectTitle}>Quiz - {currentSubject}</h1>
-        <div style={styles.questionBox}>
-          <div style={styles.questionHeader}>
-            <p style={styles.questionNumber}>
-              Question {questionNumber} of {totalQuestions}
-            </p>
-            <div style={styles.timer}>
-              Time left: {timeLeft}s
+    <div style={styles.page}>
+      <div style={styles.topBar}>
+        <span style={styles.timerTop}>
+          ⏱ {Math.floor(timeLeft / 60)}:
+          {(timeLeft % 60).toString().padStart(2, '0')}
+        </span>
+
+        <div style={styles.palette}>
+          {flatQuestions.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentIndex(i)}
+              style={{
+                ...styles.circle,
+                background:
+                  i === currentIndex
+                    ? '#fde047'
+                    : answers[flatQuestions[i]._id] !== undefined
+                    ? '#2563eb'
+                    : '#e5e7eb',
+                color:
+                  i === currentIndex ||
+                  answers[flatQuestions[i]._id] !== undefined
+                    ? '#fff'
+                    : '#000',
+              }}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* CARD */}
+      <div style={styles.card}>
+        <div style={styles.left}>
+
+          {/* ===== NEW : SUBJECT + YEAR ===== */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+            <span
+              style={{
+                background: '#2563eb',
+                color: '#fff',
+                padding: '4px 12px',
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              {q.subject}
+            </span>
+
+            <span
+              style={{
+                background: '#e5e7eb',
+                padding: '4px 12px',
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              {q.year}
+            </span>
+          </div>
+
+          <h2>Question {currentIndex + 1}</h2>
+          <p style={styles.question}>{q.question}</p>
+
+          {/* ===== NEW : TAGS ===== */}
+          {q.tags && q.tags.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                flexWrap: 'wrap',
+                marginTop: 12,
+              }}
+            >
+              {q.tags.map((tag, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
-          </div>
-          <p style={styles.questionText}>{currentQuestion.question}</p>
-          <div style={styles.options}>
-            {currentQuestion.options.map((opt, idx) => (
-              <label
-                key={idx}
-                style={{
-                  ...styles.optionLabel,
-                  backgroundColor:
-                    selectedAnswers[`${currentSubject}-${currentQuestionIndex}`] === opt
-                      ? '#5a67d8'
-                      : '#eef2ff',
-                  color:
-                    selectedAnswers[`${currentSubject}-${currentQuestionIndex}`] === opt
-                      ? 'white'
-                      : '#2d3748',
-                  cursor: timeUp || submitted || submitting ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <input
-                  type="radio"
-                  name={`question-${currentSubject}-${currentQuestionIndex}`}
-                  value={opt}
-                  checked={
-                    selectedAnswers[`${currentSubject}-${currentQuestionIndex}`] === opt
-                  }
-                  onChange={() => handleAnswerSelect(currentQuestion._id, opt)}
-                  style={styles.radioInput}
-                  disabled={submitted || submitting || timeUp}
-                />
-                {opt}
-              </label>
-            ))}
-          </div>
+          )}
         </div>
-        <div style={styles.buttons}>
-          <button
-            onClick={goPrev}
-            disabled={questionNumber === 1 || submitting}
-            style={{
-              ...styles.navButton,
-              opacity: questionNumber === 1 ? 0.5 : 1,
-              cursor: questionNumber === 1 ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Previous
-          </button>
-          <button
-            onClick={goNext}
-            disabled={questionNumber === totalQuestions || submitting}
-            style={{
-              ...styles.navButton,
-              opacity: questionNumber === totalQuestions ? 0.5 : 1,
-              cursor: questionNumber === totalQuestions ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Next
-          </button>
-          <button
-            onClick={handleSubmit}
-            style={{ ...styles.navButton, backgroundColor: '#38a169', marginLeft: 10 }}
-            disabled={submitting}
-          >
-            {submitting ? 'Submitting...' : 'Submit'}
-          </button>
+
+        <div style={styles.right}>
+          {q.options.map((opt, idx) => (
+            <label
+              key={idx}
+              style={{
+                ...styles.option,
+                background:
+                  answers[q._id] === idx ? '#2563eb' : '#f1f5ff',
+                color: answers[q._id] === idx ? '#fff' : '#000',
+              }}
+            >
+              <input
+                type="radio"
+                checked={answers[q._id] === idx}
+                onChange={() => selectAnswer(q._id, idx)}
+              />
+              {opt}
+            </label>
+          ))}
         </div>
       </div>
-      <div style={styles.cameraWrapper}>
-        <CameraFeed
-          onMultipleFacesDetected={onMultipleFaces}
-          onNoFaceDetected={onNoFace}
-        />
+
+      {/* NAV */}
+      <div style={styles.navBar}>
+        <button
+          style={styles.prevBtn}
+          disabled={currentIndex === 0}
+          onClick={() => setCurrentIndex(i => Math.max(i - 1, 0))}
+        >
+          ← Previous
+        </button>
+
+        <button
+          style={styles.nextBtn}
+          disabled={currentIndex === flatQuestions.length - 1}
+          onClick={async () => {
+            await requestFullscreen();
+            setCurrentIndex(i =>
+              Math.min(i + 1, flatQuestions.length - 1)
+            );
+          }}
+        >
+          Next →
+        </button>
+
+        <button
+          style={styles.submitBtn}
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? 'Submitting...' : 'Submit Exam'}
+        </button>
       </div>
+
+      <button style={styles.exit} onClick={() => setShowExit(true)}>
+        ✖
+      </button>
+
+      {!submitted && <CameraFeed />}
+
+      {showExit && (
+        <div style={styles.modal}>
+          <div style={styles.modalBox}>
+            <p>Exit exam? Quiz will be submitted.</p>
+            <button onClick={handleSubmit}>Exit & Submit</button>
+            <button onClick={() => setShowExit(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
+
+/* ================= STYLES ================= */
 const styles = {
-  pageContainer: {
-    minHeight: '95.5vh',
-    maxHeight: '95.5vh',
-    width: '94.5vw',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '5px 30px',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    overflow: 'hidden',
+  page: {
+    minHeight: '100vh',
+    background: 'linear-gradient(180deg,#0b3a82,#eaf1ff)',
+    padding: 20,
+    fontFamily: "'Inter', sans-serif",
   },
-  container: {
-    width: '100%',
-    maxWidth: 640,
-    height: '90vh',
-    maxHeight: '93vh',
-    overflowY: 'auto',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: '5px 30px',
-    boxSizing: 'border-box',
-    boxShadow: '0 15px 25px rgba(0,0,0,0.15)',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  subjectTitle: {
-    fontSize: 28,
-    fontWeight: 800,
-    marginBottom: 20,
-    color: '#2d3748',
-    textAlign: 'center',
-    flexShrink: 0,
-  },
-  questionBox: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 25,
-    boxShadow: '0 8px 16px rgba(90, 103, 216, 0.15)',
-    marginBottom: 25,
-    flexShrink: 0,
-  },
-  questionHeader: {
+  topBar: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-    color: '#718096',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  timer: {
-    backgroundColor: '#5a67d8',
-    color: 'white',
-    padding: '4px 12px',
-    borderRadius: 12,
-    fontWeight: '700',
-    fontSize: 14,
-    userSelect: 'none',
-    minWidth: 90,
-    textAlign: 'center',
-  },
-  questionNumber: {
-    fontWeight: '700',
-    fontSize: 16,
-    marginBottom: 0,
-    color: '#718096',
-  },
-  questionText: {
-    fontSize: 22,
     marginBottom: 20,
-    color: '#2d3748',
   },
-  options: {
+  timerTop: {
+    background: '#1e40af',
+    color: '#fff',
+    padding: '8px 18px',
+    borderRadius: 20,
+    fontWeight: 700,
+  },
+  palette: {
+    display: 'flex',
+    gap: 10,
+    overflowX: 'auto',
+    maxWidth: '75%',
+  },
+  circle: {
+    width: 40,
+    height: 40,
+    borderRadius: '50%',
+    border: 'none',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  card: {
+    display: 'flex',
+    height: '68vh',
+    background: '#fff',
+    borderRadius: 18,
+    maxWidth: 1200,
+    margin: 'auto',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+  },
+  left: {
+    flex: 1,
+    padding: '50px',
+    borderRight: '1px solid #e5e7eb',
+  },
+  right: {
+    flex: 1,
+    padding: '50px',
     display: 'flex',
     flexDirection: 'column',
-    gap: 15,
+    gap: 18,
   },
-  optionLabel: {
-    padding: '12px 18px',
-    borderRadius: 10,
-    cursor: 'pointer',
-    fontSize: 17,
-    userSelect: 'none',
+  question: {
+    fontSize: 22,
+    lineHeight: 1.6,
+  },
+  option: {
+    padding: '16px',
+    borderRadius: 14,
     display: 'flex',
-    alignItems: 'center',
-    transition: 'background-color 0.3s ease, color 0.3s ease',
-  },
-  radioInput: {
-    marginRight: 15,
+    gap: 14,
     cursor: 'pointer',
-    transform: 'scale(1.2)',
+    fontSize: 16,
   },
-  buttons: {
+  navBar: {
     display: 'flex',
     justifyContent: 'center',
-    gap: 15,
-    flexShrink: 0,
+    gap: 20,
+    marginTop: 25,
   },
-  navButton: {
-    padding: '14px 28px',
-    fontSize: 18,
+  prevBtn: {
+    padding: '12px 26px',
     borderRadius: 12,
-    border: 'none',
-    backgroundColor: '#5a67d8',
-    color: 'white',
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 8px 15px rgba(90, 103, 216, 0.4)',
-    transition: 'all 0.3s ease',
+    border: '1px solid #cbd5e1',
   },
-  loading: {
-    textAlign: 'center',
-    marginTop: 50,
-    fontSize: 18,
-    color: '#eee',
+  nextBtn: {
+    padding: '12px 26px',
+    borderRadius: 12,
+    background: '#2563eb',
+    color: '#fff',
+  },
+  submitBtn: {
+    padding: '12px 34px',
+    borderRadius: 14,
+    background: 'linear-gradient(135deg,#16a34a,#22c55e)',
+    color: '#fff',
+    fontWeight: 700,
+  },
+  exit: {
+    position: 'fixed',
+    bottom: 25,
+    right: 25,
+    background: '#ef4444',
+    color: '#fff',
+    width: 48,
+    height: 48,
+    borderRadius: '50%',
+  },
+  modal: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.45)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBox: {
+    background: '#fff',
+    padding: 30,
+    borderRadius: 12,
+  },
+  center: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    minHeight: "100vh",
+    background: "linear-gradient(135deg, #f5f7fa, #c3cfe2)",
   },
   resultBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    background: '#fff',
     padding: 40,
-    borderRadius: 20,
+    borderRadius: 16,
+  },
+  loading: {
+    color: '#fff',
     textAlign: 'center',
-    boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-    color: '#2d3748',
   },
-  dashboardButton: {
-    marginTop: 20,
-    padding: '12px 24px',
-    fontSize: 18,
-    fontWeight: 700,
-    color: 'white',
-    backgroundColor: '#48bb78',
-    border: 'none',
-    borderRadius: 12,
-    cursor: 'pointer',
-    boxShadow: '0 8px 15px rgba(72, 187, 120, 0.5)',
+  resultCard: {
+    background: "#ffffff",
+    padding: "40px",
+    borderRadius: "16px",
+    width: "380px",
+    textAlign: "center",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
   },
+
+  title: {
+    fontSize: "22px",
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: "20px",
+  },
+
+  scoreCircle: {
+    width: "140px",
+    height: "140px",
+    borderRadius: "50%",
+    margin: "0 auto 20px",
+    background: "linear-gradient(135deg, #2563eb, #1e40af)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+    boxShadow: "0 8px 20px rgba(37,99,235,0.4)",
+  },
+
+  scoreText: {
+    fontSize: "42px",
+    fontWeight: "700",
+  },
+
+  totalText: {
+    fontSize: "18px",
+    marginLeft: "6px",
+  },
+
+  percentage: {
+    fontSize: "16px",
+    color: "#374151",
+    marginBottom: "10px",
+  },
+
+  message: {
+    fontSize: "15px",
+    color: "#6b7280",
+    marginBottom: "25px",
+  },
+
+  dashboardBtn: {
+    padding: "12px 22px",
+    fontSize: "15px",
+    fontWeight: "600",
+    color: "#fff",
+    background: "linear-gradient(135deg, #16a34a, #15803d)",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    transition: "transform 0.2s ease",
+  }
 };

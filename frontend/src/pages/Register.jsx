@@ -1,168 +1,284 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-
+import { GoogleLogin } from '@react-oauth/google';
+const API = import.meta.env.VITE_API_BASE_URL;
 const Register = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Hover states for inputs and button
-  const [btnHover, setBtnHover] = useState(false);
-  const [nameHover, setNameHover] = useState(false);
-  const [emailHover, setEmailHover] = useState(false);
-  const [passHover, setPassHover] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    acceptTerms: false,
+  });
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setForm({ ...form, [name]: type === 'checkbox' ? checked : value });
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!form.acceptTerms) {
+      setError('You must accept Terms & Conditions');
+      return;
+    }
+
+    setLoading(true);
     try {
-      const response = await axios.post('https://exam-86ot.onrender.com/api/auth/register', {
-        name,
-        email,
-        password,
+      const res = await axios.post(`${API}/api/auth/register`, {
+        name: form.name,
+        email: form.email,
+        password: form.password,
       });
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
       navigate('/dashboard');
     } catch (err) {
-      console.error('Registration error : ', err);
       setError(err.response?.data?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleRegister = async (credentialResponse) => {
+    try {
+      const res = await axios.post(
+        `${API}/api/auth/google`,
+        { token: credentialResponse.credential }
+      );
+
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      navigate('/dashboard');
+    } catch {
+      setError('Google signup failed');
     }
   };
 
   return (
-    <div style={styles.pageContainer}>
-      <div style={styles.container}>
-        <h2 style={styles.title}>Secure Exam Register</h2>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <h2 style={styles.title}>Create Account</h2>
+        <p style={styles.subtitle}>
+          Start your secure exam journey with ExamSecure
+        </p>
+
+        {/* GOOGLE */}
+        <div style={styles.centerBlock}>
+          <GoogleLogin
+            onSuccess={handleGoogleRegister}
+            onError={() => setError('Google Sign-Up Failed')}
+            width="100%"
+          />
+        </div>
+
+        <div style={styles.divider}>OR</div>
+
         <form onSubmit={handleRegister} style={styles.form}>
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            style={{
-              ...styles.input,
-              borderColor: nameHover ? '#5a67d8' : '#ccc',
-              boxShadow: nameHover ? '0 0 8px #5a67d8' : 'none',
-            }}
-            onMouseEnter={() => setNameHover(true)}
-            onMouseLeave={() => setNameHover(false)}
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{
-              ...styles.input,
-              borderColor: emailHover ? '#5a67d8' : '#ccc',
-              boxShadow: emailHover ? '0 0 8px #5a67d8' : 'none',
-            }}
-            onMouseEnter={() => setEmailHover(true)}
-            onMouseLeave={() => setEmailHover(false)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              ...styles.input,
-              borderColor: passHover ? '#5a67d8' : '#ccc',
-              boxShadow: passHover ? '0 0 8px #5a67d8' : 'none',
-            }}
-            onMouseEnter={() => setPassHover(true)}
-            onMouseLeave={() => setPassHover(false)}
-          />
+          <div style={styles.centerBlock}>
+            <input
+              name="name"
+              placeholder="Full Name"
+              value={form.name}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.centerBlock}>
+            <input
+              name="email"
+              type="email"
+              placeholder="Email Address"
+              value={form.email}
+              onChange={handleChange}
+              required
+              style={styles.input}
+            />
+          </div>
+
+          <div style={styles.centerBlock}>
+            <div style={styles.passwordRow}>
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                style={styles.passwordInput}
+              />
+              <span
+                style={styles.showHide}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </span>
+            </div>
+          </div>
+
+          <div style={styles.centerBlock}>
+            <label style={styles.checkbox}>
+              <input
+                type="checkbox"
+                name="acceptTerms"
+                checked={form.acceptTerms}
+                onChange={handleChange}
+              />
+              <span>
+                I agree to the <b>Terms & Conditions</b>
+              </span>
+            </label>
+          </div>
+
           {error && <p style={styles.error}>{error}</p>}
-          <button
-            type="submit"
-            style={{
-              ...styles.button,
-              backgroundColor: btnHover ? '#434190' : '#5a67d8',
-              boxShadow: btnHover
-                ? '0 12px 24px rgba(67, 65, 144, 0.6)'
-                : '0 8px 15px rgba(90, 103, 216, 0.4)',
-              transform: btnHover ? 'scale(1.05)' : 'scale(1)',
-              transition: 'all 0.3s ease',
-            }}
-            onMouseEnter={() => setBtnHover(true)}
-            onMouseLeave={() => setBtnHover(false)}
-          >
-            Register
-          </button>
+
+          <div style={styles.centerBlock}>
+            <button type="submit" disabled={loading} style={styles.button}>
+              {loading ? 'Creating Account...' : 'Register'}
+            </button>
+          </div>
         </form>
+
+        <p style={styles.footerText}>
+          Already have an account?{' '}
+          <Link to="/login" style={styles.link}>Login</Link>
+        </p>
       </div>
     </div>
   );
 };
 
 const styles = {
-  pageContainer: {
+  page: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'linear-gradient(180deg, #0b3a82, #eaf1ff)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '30px',
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    padding: 20,
+    fontFamily: "'Segoe UI', Tahoma, sans-serif",
   },
-  container: {
+
+  card: {
     width: '100%',
-    maxWidth: '420px',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: '16px',
-    boxShadow:
-      '0 15px 25px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.1)',
-    padding: '40px 50px',
-    boxSizing: 'border-box',
+    maxWidth: 420,
+    background: '#fff',
+    padding: '40px 35px',
+    borderRadius: 18,
+    boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
     textAlign: 'center',
-    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
   },
+
   title: {
-    marginBottom: '30px',
-    color: '#2d3748',
-    fontWeight: '800',
-    fontSize: '32px',
+    fontSize: 30,
+    fontWeight: 800,
+    color: '#1e293b',
   },
+
+  subtitle: {
+    fontSize: 15,
+    color: '#64748b',
+    marginBottom: 25,
+  },
+
+  divider: {
+    margin: '18px 0',
+    fontSize: 14,
+    color: '#94a3b8',
+    fontWeight: 600,
+  },
+
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '20px',
+    gap: 14,
   },
+
+  /* 🔑 SINGLE SOURCE OF WIDTH */
+  centerBlock: {
+    width: '100%',
+    maxWidth: 340,
+    margin: '0 auto',
+  },
+
   input: {
-    padding: '15px 18px',
-    fontSize: '16px',
-    borderRadius: '10px',
-    border: '1.8px solid #ccc',
-    outline: 'none',
-    fontFamily: 'inherit',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+    width: '100%',
+    padding: '14px 16px',
+    fontSize: 16,
+    borderRadius: 10,
+    border: '1.5px solid #cbd5e1',
   },
-  button: {
-    padding: '16px',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '20px',
-    fontWeight: '700',
+
+  passwordRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+  },
+
+  passwordInput: {
+    width: '100%',
+    padding: '14px 16px',
+    fontSize: 16,
+    borderRadius: 10,
+    border: '1.5px solid #cbd5e1',
+  },
+
+  showHide: {
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'all 0.3s ease',
+    whiteSpace: 'nowrap',
   },
+
+  checkbox: {
+    display: 'flex',
+    gap: 10,
+    alignItems: 'center',
+    fontSize: 14,
+    color: '#475569',
+  },
+
+  button: {
+    width: '100%',
+    padding: 14,
+    fontSize: 18,
+    fontWeight: 700,
+    background: '#2563eb',
+    color: '#fff',
+    borderRadius: 10,
+    border: 'none',
+    cursor: 'pointer',
+  },
+
   error: {
-    color: '#e53e3e',
-    fontSize: '14px',
-    fontWeight: '700',
-    marginTop: '-10px',
-    marginBottom: '10px',
+    color: '#dc2626',
+    fontSize: 14,
+    fontWeight: 600,
+    textAlign: 'center',
+  },
+
+  footerText: {
+    marginTop: 20,
+    fontSize: 15,
+    color: '#475569',
+  },
+
+  link: {
+    color: '#2563eb',
+    fontWeight: 700,
+    textDecoration: 'none',
   },
 };
 

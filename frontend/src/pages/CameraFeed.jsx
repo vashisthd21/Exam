@@ -1,62 +1,55 @@
-import React, { useEffect, useRef } from 'react';
-
-const styles = {
-  cameraContainer: {
-    position: 'fixed',
-    top: 20,
-    right: 20,
-    width: 180,
-    height: 135,
-    backgroundColor: '#000',
-    borderRadius: 12,
-    overflow: 'hidden',
-    zIndex: 9999,
-    border: '2px solid #5a67d8',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-  },
-  video: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-};
+import { useEffect, useRef } from 'react';
 
 export default function CameraFeed() {
   const videoRef = useRef(null);
+  const streamRef = useRef(null);
 
   useEffect(() => {
-    const startVideo = async () => {
+    let mounted = true;
+
+    const start = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        streamRef.current = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+        });
+
+        if (mounted && videoRef.current) {
+          videoRef.current.srcObject = streamRef.current;
         }
       } catch (err) {
-        console.error('Error accessing webcam:', err);
+        console.warn('Camera denied');
       }
     };
 
-    startVideo();
+    start();
 
     return () => {
-      // Cleanup video stream on unmount
-      if (videoRef.current && videoRef.current.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      mounted = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
       }
     };
   }, []);
 
   return (
-    <div style={styles.cameraContainer}>
-      <video
-        ref={videoRef}
-        autoPlay
-        muted
-        playsInline
-        style={styles.video}
-        width={180}
-        height={135}
-      />
+    <div style={styles.box}>
+      <video ref={videoRef} autoPlay muted playsInline style={styles.video} />
     </div>
   );
 }
+
+const styles = {
+  box: {
+    position: 'fixed',
+    top: 20,
+    right: 20,
+    width: 180,
+    height: 135,
+    borderRadius: 12,
+    overflow: 'hidden',
+    border: '2px solid #2563eb',
+    background: '#000',
+    zIndex: 9999,
+  },
+  video: { width: '100%', height: '100%', objectFit: 'cover' },
+};
