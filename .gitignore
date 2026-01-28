@@ -1,17 +1,20 @@
 # Node dependencies
 node_modules/
+
+# Environment variables (IMPORTANT)
 .env
-.env.*           # ignore all environment files like .env.local, .env.development
+.env.*
+!.env.example   # keep example env file if you use one
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
@@ -27,7 +30,7 @@ Thumbs.db
 # VS Code settings
 .vscode/
 
-# Optional for Render/Vercel/Netlify
+# Optional for deployment platforms
 .vercel/
 .netlify/
 
