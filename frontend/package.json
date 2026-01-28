@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.4",
+    "axios": "^1.13.4",
     "face-api.js": "^0.22.2",
     "framer-motion": "^12.29.0",
+    "lodash": "^4.17.23",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0",
     "socket.io-client": "^4.8.1"
   },
