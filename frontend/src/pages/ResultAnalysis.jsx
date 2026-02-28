@@ -15,6 +15,7 @@ import {
 } from "recharts";
 
 const COLORS = ["#22c55e", "#ef4444"];
+
 const API = import.meta.env.VITE_API_BASE_URL;
 /* ================= ANIMATION VARIANTS ================= */
 const questionVariants = {
@@ -26,7 +27,7 @@ const questionVariants = {
 const ResultAnalysis = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
-
+  const [showGraph, setShowGraph] = useState(false);
   const [data, setData] = useState(null);
   const [current, setCurrent] = useState(0);
 
@@ -90,38 +91,7 @@ const ResultAnalysis = () => {
       <div style={styles.layout}>
         {/* ================= LEFT PANEL ================= */}
         <div style={styles.left}>
-          {/* ACCURACY CARD */}
-          <div style={styles.accuracyCard}>
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={accuracyData}
-                  innerRadius={62}
-                  outerRadius={78}
-                  dataKey="value"
-                >
-                  {accuracyData.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i]} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-
-            <div style={styles.accuracyCenter}>
-              <h2>{data.score}/{data.totalQuestions}</h2>
-              <span style={styles.accuracyBadge}>
-                {data.accuracy}% Accuracy
-              </span>
-            </div>
-
-            <div style={styles.scoreMeta}>
-              <span style={{ color: "#22c55e" }}>{data.score} Correct</span>
-              <span style={{ color: "#ef4444" }}>{incorrect} Incorrect</span>
-              <span>{data.totalQuestions} Total</span>
-            </div>
-          </div>
-
-          {/* EXAM SUMMARY */}
+          
           <div style={styles.summary}>
             <h4>📘 Exam Summary</h4>
             <p><b>Type:</b> {data.quizType}</p>
@@ -153,6 +123,15 @@ const ResultAnalysis = () => {
               ))}
             </div>
           </div>
+          {/* GRAPH TOGGLE BUTTON */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowGraph(prev => !prev)}
+              style={styles.graphToggleBtn}
+            >
+              {showGraph ? "Hide Subject-wise Analysis ▲" : "Show Subject-wise Analysis ▼"}
+            </motion.button>
         </div>
 
         {/* ================= RIGHT PANEL (ANIMATED) ================= */}
@@ -232,18 +211,35 @@ const ResultAnalysis = () => {
               </button>
             </div>
 
+            
             {/* SUBJECT GRAPH */}
-            <div style={styles.graphBox}>
-              <h4>📊 Subject-wise Accuracy</h4>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={subjectData}>
-                  <XAxis dataKey="subject" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="accuracy" fill="#2563eb" radius={[6,6,0,0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            <AnimatePresence>
+              {showGraph && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.4 }}
+                  style={styles.graphBox}
+                >
+                  <h4>📊 Subject-wise Accuracy</h4>
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={subjectData}>
+                      <XAxis dataKey="subject" />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar
+                        dataKey="accuracy"
+                        fill="#2563eb"
+                        radius={[6,6,0,0]}
+                        isAnimationActive
+                        animationDuration={900}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </AnimatePresence>
       </div>
@@ -255,6 +251,18 @@ export default ResultAnalysis;
 
 
 const styles = {
+  graphToggleBtn: {
+  marginTop: 20,
+  padding: "10px 18px",
+  borderRadius: 999,
+  border: "none",
+  background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+  color: "#fff",
+  fontWeight: 600,
+  cursor: "pointer",
+  boxShadow: "0 8px 20px rgba(37,99,235,0.3)",
+  transition: "all 0.25s ease",
+},
   page: {
     position: "relative",
     minHeight: "100vh",
