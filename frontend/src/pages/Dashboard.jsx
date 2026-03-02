@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-const API = import.meta.env.VITE_API_BASE_URL;
+import API from "../api";
+// const API = import.meta.env.VITE_API_BASE_URL;
+// const API = 'http://localhost:5000';
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user')) || {};
@@ -18,8 +20,7 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(
-          `${API}/api/dashboard/stats`,
+        const res = await API.get("/api/dashboard/stats",
           {
             headers: {
               Authorization: `Bearer ${token}`,
