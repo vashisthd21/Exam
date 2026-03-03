@@ -13,7 +13,8 @@ import {
   Bar,
 } from "recharts";
 
-const API = "http://localhost:5000";
+// const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_BASE_URL;
 
 const AdminDashboard = () => {
   const navigate = useNavigate();

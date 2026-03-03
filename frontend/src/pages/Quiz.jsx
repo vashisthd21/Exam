@@ -5,8 +5,8 @@ import io from 'socket.io-client';
 import { debounce } from 'lodash';
 import CameraFeed from './CameraFeed';
 
-const API = 'http://localhost:5000';
-// const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// const API = 'http://localhost:5000';
+const API = import.meta.env.VITE_API_BASE_URL;
 const socket = io(`${API}`);
 export default function Quiz() {
   const { quizType } = useParams();

@@ -5,7 +5,8 @@ import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:5000";
+// const API = "http://localhost:5000";
+const API = import.meta.env.VITE_API_BASE_URL;
 
 const VerifyOTP = () => {
   const navigate = useNavigate();

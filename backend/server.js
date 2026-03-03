@@ -68,10 +68,6 @@ io.on('connection', socket => {
       time: new Date(),
     });
 
-    // 👉 future use:
-    // - mark attempt suspicious
-    // - auto submit quiz
-    // - log violation
   });
 
   socket.on('disconnect', () => {
