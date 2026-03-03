@@ -15,7 +15,6 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    // ❗ Password NOT required for Google users
     password: {
       type: String,
       required: false,
@@ -26,6 +25,18 @@ const userSchema = new mongoose.Schema(
       enum: ['local', 'google'],
       default: 'local',
     },
+
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
+
+    otp: String,
+    otpExpire: Date,
+
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
 
     totalScore: {
       type: Number,
@@ -40,6 +51,10 @@ const userSchema = new mongoose.Schema(
     quizScore: {
       type: Number,
       default: 0,
+    },
+    otpRequestCount: {
+      type: Number,
+      default: 0
     },
   },
   { timestamps: true }

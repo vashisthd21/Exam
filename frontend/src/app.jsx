@@ -6,6 +6,8 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Quiz from "./pages/Quiz.jsx";
 import ContactUs from "./pages/ContactUs.jsx";
 import ResultAnalysis from "./pages/ResultAnalysis";
+import AdminDashboard from "./pages/AdminDashboard";
+import VerifyOTP from "./pages/VerifyOTP.jsx";
 
 function App() {
   return (
@@ -21,7 +23,8 @@ function App() {
   path="/result-analysis/:attemptId"
   element={<ResultAnalysis />}
 />
-
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/verify-otp" element={<VerifyOTP />} />
         </Routes>
       </div>
   );

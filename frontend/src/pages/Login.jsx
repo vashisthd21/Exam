@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
-const API = import.meta.env.VITE_API_BASE_URL;
+// const API = import.meta.env.VITE_API_BASE_URL;
+const API = 'http://localhost:5000';
 console.log(API);
 const Login = () => {
   const navigate = useNavigate();
@@ -21,37 +22,60 @@ const Login = () => {
   };
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    try {
-      const res = await axios.post(
-        `${API}/api/auth/login`,
-        form
-      );
+  try {
+    const res = await axios.post(`${API}/api/auth/login`, form);
 
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/dashboard');
-    } catch {
-      setError('Invalid email or password');
-    } finally {
-      setLoading(false);
+    // If OTP required
+    if (res.data.requireOTP) {
+      navigate('/verify-otp', {
+        state: {
+          userId: res.data.userId,
+          remember: res.data.remember
+        }
+      });
+      return;
     }
-  };
+
+    const { user } = res.data;
+    localStorage.setItem('user', JSON.stringify(user));
+
+    // Role based redirect
+    if (user.role === 'admin') {
+      navigate('/admin/dashboard');
+    } else {
+      navigate('/dashboard');
+    }
+
+  } catch (err) {
+    setError(err.response?.data?.message || 'Login failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogleLogin = async (cred) => {
     try {
       const res = await axios.post(
         `${API}/api/auth/google`,
-        { token: cred.credential }
+        { token: cred.credential },
+        {withCredentials: true}
       );
 
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/dashboard');
-    } catch(e){
+      const { user } = res.data;
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log(user.role);
+      // 🔥 ROLE BASED REDIRECTION
+      if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
+
+    } catch (e) {
       console.log(e);
       setError('Google login failed');
     }
