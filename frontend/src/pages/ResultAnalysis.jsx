@@ -17,7 +17,7 @@ import {
 const COLORS = ["#22c55e", "#ef4444"];
 
 const API = import.meta.env.VITE_API_BASE_URL;
-/* ================= ANIMATION VARIANTS ================= */
+
 const questionVariants = {
   initial: { opacity: 0, x: 40 },
   animate: { opacity: 1, x: 0 },

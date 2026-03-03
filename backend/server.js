@@ -10,6 +10,7 @@ import authroute from './routes/route.auth.js';
 import quizroute from './routes/route.quiz.js';
 import contactRoute from './routes/contact.js';
 import dashboardRoutes from './routes/route.dashboard.js';
+import adminRoutes from './routes/admin.routes.js';
 
 dotenv.config();
 
@@ -42,7 +43,7 @@ app.use('/api/auth', authroute);
 app.use('/api/quiz', quizroute);
 app.use('/api/contact', contactRoute);
 app.use('/api/dashboard', dashboardRoutes);
-
+app.use('/api/admin', adminRoutes);
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
@@ -83,7 +84,9 @@ app.use((err, req, res, next) => {
   console.error('Global error:', err.message);
   res.status(500).json({ message: 'Internal server error' });
 });
-
+app.get("/", (req, res) => {
+    res.send("Backend is running successfully");
+});
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
