@@ -3,7 +3,7 @@ const io = new Server(server, {
     origin: [
       'http://localhost:5173',
       'https://exam-secure.vercel.app',
-      'https://exam-weld-mu.vercel.app/'
+      'https://exam-weld-mu.vercel.app'
     ],
     methods: ['GET', 'POST'],
     credentials: true
