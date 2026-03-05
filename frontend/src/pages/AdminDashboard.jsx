@@ -13,8 +13,7 @@ import {
   Bar,
 } from "recharts";
 
-// const API = "http://localhost:5000";
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = 'https://exam-86ot.onrender.com';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();

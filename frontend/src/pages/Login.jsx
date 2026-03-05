@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
-const API = import.meta.env.VITE_API_BASE_URL;
-// const API = 'http://localhost:5000';
+// const API = import.meta.env.VITE_API_BASE_URL;
+const API = 'https://exam-86ot.onrender.com';
+
+console.log(API);
 console.log(API);
 const Login = () => {
   const navigate = useNavigate();
