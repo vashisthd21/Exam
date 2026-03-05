@@ -305,7 +305,7 @@ const verifyOTP = async (req, res) => {
     const options = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      sameSite: "none",
       maxAge: remember
         ? 7 * 24 * 60 * 60 * 1000
         : 4 * 60 * 60 * 1000
