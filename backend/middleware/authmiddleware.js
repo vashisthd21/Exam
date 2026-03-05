@@ -7,7 +7,7 @@ const authMiddleware = async (req, res, next) => {
       req.cookies?.BearerToken ||
       req.header("Authorization")?.replace("Bearer ", "");
     // console.log(req.cookies);
-    console.log(req.token);
+    // console.log(req.token);
     console.log("Incoming token:", token);
 
     // 🚨 STOP HERE IF TOKEN IS MISSING
