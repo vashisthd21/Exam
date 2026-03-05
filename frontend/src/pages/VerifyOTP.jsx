@@ -5,12 +5,14 @@ import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:5000";
+const API = 'https://exam-86ot.onrender.com';
+
 
 const VerifyOTP = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const auth = useAuth();
+  const login = auth?.login;
 
   const { userId, remember, type } = location.state || {};
 
@@ -52,6 +54,7 @@ const VerifyOTP = () => {
       handleVerify(newOtp.join(""));
     }
   };
+
   const handleKeyDown = (e, index) => {
     if (e.key === "Backspace") {
       const newOtp = [...otp];
@@ -66,6 +69,7 @@ const VerifyOTP = () => {
       }
     }
   };
+
   const handleVerify = async (manualOtp) => {
     const finalOtp = manualOtp || otp.join("");
 
@@ -88,6 +92,10 @@ const VerifyOTP = () => {
         { withCredentials: true }
       );
 
+      // Save authentication data
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
       login(res.data.user);
 
       setSuccess(true);
@@ -99,7 +107,7 @@ const VerifyOTP = () => {
         } else {
           navigate("/dashboard");
         }
-      }, 1500);
+      }, 1200);
 
     } catch (err) {
       setShake(true);
@@ -116,13 +124,14 @@ const VerifyOTP = () => {
     try {
       const endpoint =
         type === "register"
-          ? "/api/auth/resend-register-otp"
+          ? "/api/auth/register"
           : "/api/auth/resend-login-otp";
 
       await axios.post(`${API}${endpoint}`, { userId });
 
       setTimer(60);
       toast.success("OTP Resent Successfully");
+
     } catch (err) {
       toast.error(err.response?.data?.message || "Resend failed");
     }
@@ -226,7 +235,7 @@ const VerifyOTP = () => {
   return (
     <div style={styles.page}>
       <Toaster position="top-center" />
-      
+
       <button style={styles.toggle} onClick={() => setDark(!dark)}>
         {dark ? "☀️" : "🌙"}
       </button>
@@ -251,6 +260,13 @@ const VerifyOTP = () => {
               ref={(el) => (inputsRef.current[index] = el)}
               onChange={(e) => handleChange(e.target.value, index)}
               onKeyDown={(e) => handleKeyDown(e, index)}
+              onPaste={(e) => {
+                const pasted = e.clipboardData.getData("text").slice(0, 6);
+                if (/^\d{6}$/.test(pasted)) {
+                  setOtp(pasted.split(""));
+                  handleVerify(pasted);
+                }
+              }}
               style={styles.otpInput}
             />
           ))}

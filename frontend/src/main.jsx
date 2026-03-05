@@ -8,11 +8,12 @@ import App from './app.jsx';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId="551981807611-kbsns51rokstpua4a85f93m37ecsaiaa.apps.googleusercontent.com">
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <App/>
+        </BrowserRouter>
+      </AuthProvider>
+      
     </GoogleOAuthProvider>
   </React.StrictMode>
 );

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { GoogleLogin } from '@react-oauth/google';
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API = 'https://exam-86ot.onrender.com';
+
 const Register = () => {
   const navigate = useNavigate();
 
@@ -23,31 +24,38 @@ const Register = () => {
   };
 
   const handleRegister = async (e) => {
-    e.preventDefault();
-    setError('');
+  e.preventDefault();
+  setError('');
 
-    if (!form.acceptTerms) {
-      setError('You must accept Terms & Conditions');
-      return;
-    }
+  if (!form.acceptTerms) {
+    setError('You must accept Terms & Conditions');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API}/api/auth/register`, {
-        name: form.name,
-        email: form.email,
-        password: form.password,
+  setLoading(true);
+
+  try {
+    const res = await axios.post(`${API}/api/auth/register`, {
+      name: form.name,
+      email: form.email,
+      password: form.password,
+    });
+
+    if (res.data.requireOTP) {
+      navigate('/verify-otp', {
+        state: {
+          userId: res.data.userId,
+          type: 'register'
+        }
       });
-
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
     }
-  };
+
+  } catch (err) {
+    setError(err.response?.data?.message || 'Registration failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogleRegister = async (credentialResponse) => {
     try {

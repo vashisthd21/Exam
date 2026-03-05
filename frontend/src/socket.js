@@ -1,4 +1,9 @@
-import io from 'socket.kio-client';
-const socket = io('http://loclalhost:5000');
+import { io } from "socket.io-client";
+
+const socket = io(import.meta.env.VITE_API_BASE_URL, {
+  withCredentials: true,
+  transports: ["websocket"]
+});
+
 
 export default socket;

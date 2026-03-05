@@ -1,4 +1,6 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -15,14 +17,14 @@ const transporter = nodemailer.createTransport({
 
 const sendEmail = async (to, subject, html) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"ExamSecure" <${process.env.EMAIL_USER}>`,
+    const response = await resend.emails.send({
+      from: "ExamSecure <onboarding@resend.dev>",
       to,
       subject,
       html,
     });
 
-    console.log("Email sent:", info.response);
+    console.log("Email sent:", response);
   } catch (error) {
     console.error("Email sending error:", error);
     throw error;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-const API = import.meta.env.VITE_API_BASE_URL;
+const API = 'https://exam-86ot.onrender.com';
 const LandingPage = () => {
   const [contact, setContact] = useState({ name: '', email: '', message: '' });
   const [status, setStatus] = useState('');
