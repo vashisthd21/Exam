@@ -24,15 +24,26 @@ const register = async (req, res) => {
 
   try {
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message: "An account with this email already exists."
+      });
     }
 
+    console.log("Starting registration process");
+
     const existingPending = await PendingUser.findOne({ email });
+
+    // ==============================
+    // RESEND OTP IF PENDING EXISTS
+    // ==============================
     if (existingPending) {
+
       if (existingPending.otpRequestCount >= 5) {
         return res.status(429).json({
-          message: "Too many OTP requests. Try later."
+          message:
+            "Too many OTP requests. Please wait before trying again."
         });
       }
 
@@ -44,7 +55,45 @@ const register = async (req, res) => {
 
       await existingPending.save();
 
-      await sendEmail(email, "Resend OTP", `<h1>${otp}</h1>`);
+      await sendEmail(
+        email,
+        "ExamSecure Verification Code",
+        `
+        <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px;">
+          <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:8px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+
+            <h2 style="color:#2563eb;">ExamSecure Verification</h2>
+
+            <p style="font-size:15px; color:#555;">
+              Hello <b>${existingPending.name}</b>,
+            </p>
+
+            <p style="font-size:15px; color:#555;">
+              Your verification code is:
+            </p>
+
+            <div style="font-size:34px; font-weight:bold; letter-spacing:6px; color:#2563eb; margin:25px 0;">
+              ${otp}
+            </div>
+
+            <p style="font-size:14px; color:#555;">
+              This OTP will expire in <b>10 minutes</b>.
+            </p>
+
+            <p style="font-size:13px; color:#888;">
+              If you did not request this verification code, please ignore this email.
+            </p>
+
+            <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
+
+            <p style="font-size:12px; color:#999;">
+              © ${new Date().getFullYear()} ExamSecure
+            </p>
+
+          </div>
+        </div>
+        `
+      );
 
       return res.status(200).json({
         requireOTP: true,
@@ -53,7 +102,11 @@ const register = async (req, res) => {
       });
     }
 
+    // ==============================
+    // NEW USER REGISTRATION
+    // ==============================
     const otp = generateOTP();
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const pendingUser = await PendingUser.create({
@@ -61,13 +114,51 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       otp: hashOTP(otp),
-      otpExpire: Date.now() + 10 * 60 * 1000
+      otpExpire: Date.now() + 10 * 60 * 1000,
+      otpRequestCount: 1
     });
+
+    console.log("Sending OTP email");
 
     await sendEmail(
       email,
-      "Verify Your Account",
-      `<h1>${otp}</h1>`
+      "Verify Your ExamSecure Account",
+      `
+      <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px;">
+        <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:8px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+
+          <h2 style="color:#2563eb;">Welcome to ExamSecure</h2>
+
+          <p style="font-size:16px; color:#333;">
+            Hello <b>${name}</b>,
+          </p>
+
+          <p style="font-size:15px; color:#555;">
+            Thank you for registering with <b>ExamSecure</b>.  
+            Please use the following One-Time Password (OTP) to verify your email.
+          </p>
+
+          <div style="font-size:34px; font-weight:bold; letter-spacing:6px; color:#2563eb; margin:25px 0;">
+            ${otp}
+          </div>
+
+          <p style="font-size:14px; color:#555;">
+            This verification code will expire in <b>10 minutes</b>.
+          </p>
+
+          <p style="font-size:13px; color:#888;">
+            If you did not create an account on ExamSecure, please ignore this email.
+          </p>
+
+          <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
+
+          <p style="font-size:12px; color:#999;">
+            © ${new Date().getFullYear()} ExamSecure. All rights reserved.
+          </p>
+
+        </div>
+      </div>
+      `
     );
 
     res.status(200).json({
@@ -77,7 +168,12 @@ const register = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Register failed" });
+    console.error("Register Error:", error);
+
+    res.status(500).json({
+      message:
+        "Registration failed. Please try again later."
+    });
   }
 };
 
@@ -91,49 +187,93 @@ const login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user || !user.password) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({
+        message: "Invalid email or password."
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({
+        message: "Invalid email or password."
+      });
     }
 
-    // 🔥 Rate limit OTP requests (max 5 per 15 min)
+    // OTP rate limit
     if (user.otpRequestCount && user.otpRequestCount >= 5) {
       return res.status(429).json({
-        message: "Too many OTP requests. Try again later."
+        message:
+          "Too many OTP requests. Please wait before trying again."
       });
     }
 
     const otp = generateOTP();
 
-    user.otp = hashOTP(otp);  // 🔐 hashed
+    user.otp = hashOTP(otp);
     user.otpExpire = Date.now() + 10 * 60 * 1000;
     user.otpRequestCount = (user.otpRequestCount || 0) + 1;
 
     await user.save();
 
+    // Send professional OTP email
     await sendEmail(
       user.email,
-      "Your OTP for ExamSecure Login",
+      "ExamSecure Login Verification Code",
       `
-        <h2>Hello ${user.name},</h2>
-        <p>Your OTP is:</p>
-        <h1 style="color:#2563eb;">${otp}</h1>
-        <p>This OTP expires in 10 minutes.</p>
+      <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px;">
+        <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:8px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+
+          <h2 style="color:#2563eb;">ExamSecure Login Verification</h2>
+
+          <p style="font-size:16px; color:#333;">
+            Hello <b>${user.name}</b>,
+          </p>
+
+          <p style="font-size:15px; color:#555;">
+            We received a request to log in to your <b>ExamSecure</b> account.
+          </p>
+
+          <p style="font-size:15px; color:#555;">
+            Please use the following One-Time Password (OTP) to complete your login:
+          </p>
+
+          <div style="font-size:34px; font-weight:bold; letter-spacing:6px; color:#2563eb; margin:25px 0;">
+            ${otp}
+          </div>
+
+          <p style="font-size:14px; color:#555;">
+            This verification code will expire in <b>10 minutes</b>.
+          </p>
+
+          <p style="font-size:13px; color:#888;">
+            If you did not attempt to log in to ExamSecure, please ignore this email or contact support.
+          </p>
+
+          <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
+
+          <p style="font-size:12px; color:#999;">
+            © ${new Date().getFullYear()} ExamSecure. All rights reserved.
+          </p>
+
+        </div>
+      </div>
       `
     );
 
     return res.status(200).json({
-      message: "OTP sent",
+      message: "OTP sent successfully.",
       requireOTP: true,
       userId: user._id,
       remember
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Login failed" });
+    console.error("Login Error:", error);
+
+    res.status(500).json({
+      message: "Login failed. Please try again later."
+    });
   }
 };
 
@@ -196,13 +336,16 @@ const resendLoginOTP = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid request" });
+      return res.status(400).json({
+        message: "Invalid request. User not found."
+      });
     }
 
-    // 🔥 Rate limit (max 5 per 15 minutes)
+    // Rate limit (max 5 OTP requests)
     if (user.otpRequestCount && user.otpRequestCount >= 5) {
       return res.status(429).json({
-        message: "Too many OTP requests. Try again later."
+        message:
+          "Too many OTP requests. Please wait before requesting again."
       });
     }
 
@@ -216,21 +359,55 @@ const resendLoginOTP = async (req, res) => {
 
     await sendEmail(
       user.email,
-      "Resend OTP - ExamSecure",
+      "ExamSecure Login Verification Code",
       `
-        <h2>Hello ${user.name},</h2>
-        <p>Your new OTP is:</p>
-        <h1 style="color:#2563eb;">${otp}</h1>
-        <p>This OTP expires in 10 minutes.</p>
+      <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px;">
+        <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:8px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+
+          <h2 style="color:#2563eb;">ExamSecure Login Verification</h2>
+
+          <p style="font-size:16px; color:#333;">
+            Hello <b>${user.name}</b>,
+          </p>
+
+          <p style="font-size:15px; color:#555;">
+            Here is your new One-Time Password (OTP) to continue logging in to your 
+            <b>ExamSecure</b> account.
+          </p>
+
+          <div style="font-size:34px; font-weight:bold; letter-spacing:6px; color:#2563eb; margin:25px 0;">
+            ${otp}
+          </div>
+
+          <p style="font-size:14px; color:#555;">
+            This verification code will expire in <b>10 minutes</b>.
+          </p>
+
+          <p style="font-size:13px; color:#888;">
+            If you did not request this code, please ignore this email or contact support immediately.
+          </p>
+
+          <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
+
+          <p style="font-size:12px; color:#999;">
+            © ${new Date().getFullYear()} ExamSecure. All rights reserved.
+          </p>
+
+        </div>
+      </div>
       `
     );
 
     res.status(200).json({
-      message: "OTP resent successfully"
+      message: "A new OTP has been sent to your email."
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Failed to resend OTP" });
+    console.error("Resend OTP Error:", error);
+
+    res.status(500).json({
+      message: "Failed to resend OTP. Please try again later."
+    });
   }
 };
 const verifyRegisterOTP = async (req, res) => {
