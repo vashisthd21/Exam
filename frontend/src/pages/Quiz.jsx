@@ -5,8 +5,8 @@ import io from 'socket.io-client';
 import { debounce } from 'lodash';
 import CameraFeed from './CameraFeed';
 
-const API = 'https://exam-86ot.onrender.com';
-// const API = import.meta.env.VITE_API_BASE_URL;
+// const API = 'https://exam-86ot.onrender.com';
+const API = import.meta.env.VITE_API_BASE_URL;
 const socket = io(`${API}`);
 export default function Quiz() {
   const { quizType } = useParams();

@@ -5,7 +5,9 @@ import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
-const API = 'https://exam-86ot.onrender.com';
+// const API = 'https://exam-86ot.onrender.com';
+
+const API = import.meta.env.VITE_API_BASE_URL;
 
 
 const VerifyOTP = () => {

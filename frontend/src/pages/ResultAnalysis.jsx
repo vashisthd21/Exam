@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PieChart,
@@ -16,8 +17,8 @@ import {
 
 const COLORS = ["#22c55e", "#ef4444"];
 
-// const API = import.meta.env.VITE_API_BASE_URL;
-const API = 'https://exam-86ot.onrender.com';
+const API = import.meta.env.VITE_API_BASE_URL;
+// const API = 'https://exam-86ot.onrender.com';
 const questionVariants = {
   initial: { opacity: 0, x: 40 },
   animate: { opacity: 1, x: 0 },
@@ -30,7 +31,88 @@ const ResultAnalysis = () => {
   const [showGraph, setShowGraph] = useState(false);
   const [data, setData] = useState(null);
   const [current, setCurrent] = useState(0);
+  const [aiExplanation, setAiExplanation] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [rawText, setRawText] = useState("");
+  const [thinkingStage, setThinkingStage] = useState("");
+const explainWithAI = async (q) => {
+  try {
+    setLoadingAI(true);
+    setShowModal(true);
+    setAiExplanation("");
+    setThinkingStage("thinking");
 
+    const token = localStorage.getItem("token");
+    setTimeout(() => {
+      setThinkingStage("analyzing");
+    }, 600);
+    const res = await axios.post(
+      `${API}/api/chat`,
+      {
+        message: `
+You are an expert UPSC mentor.
+
+Your task is to explain the following multiple-choice question in a way that helps a UPSC aspirant understand and remember it.
+
+Follow this STRICT structure:
+
+### 1. Concept
+- Explain the core concept in 2–3 lines.
+
+### 2. Correct Answer Explanation
+- Clearly explain WHY the correct answer is right.
+
+### 3. Why Other Options Are Wrong
+- Briefly explain why each incorrect option is wrong.
+
+### 4. Key Facts / Features
+- List important points or facts related to the topic.
+
+### 5. Exam Tip
+- Add a short trick or tip useful for UPSC Prelims or Mains.
+
+Rules:
+- Use bullet points
+- Keep it concise
+- Use simple language
+- Be exam-oriented
+
+---
+
+Question:
+${q.question}
+
+Options:
+${q.options.map((o, i) => `${i + 1}. ${o}`).join("\n")}
+
+Correct Answer:
+${q.options[q.correctAnswer]}
+
+User Answer:
+${q.options[q.userAnswer]}
+        `,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    setThinkingStage("generating");
+
+    setTimeout(() => {
+      setAiExplanation(res.data.reply);
+      setThinkingStage("done");
+      setLoadingAI(false);
+    }, 800);
+
+  } catch (err) {
+    setAiExplanation("⚠️ Failed to fetch AI explanation");
+  }
+
+  setLoadingAI(false);
+};
   useEffect(() => {
     const fetchAttempt = async () => {
       const token = localStorage.getItem("token");
@@ -192,7 +274,12 @@ const ResultAnalysis = () => {
               <strong>Explanation:</strong>
               <p>{q.explanation}</p>
             </div>
-
+            <button
+              onClick={() => explainWithAI(q)}
+              style={styles.aiBtn}
+            >
+              🤖 Click to get more detailed explanation of the answer using AI.
+            </button>
             {/* NAV BUTTONS */}
             <div style={styles.navBtns}>
               <button
@@ -243,6 +330,70 @@ const ResultAnalysis = () => {
           </motion.div>
         </AnimatePresence>
       </div>
+      {showModal && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modal}>
+      
+      {/* HEADER */}
+      <div style={styles.modalHeader}>
+        <span>🤖 AI Explanation</span>
+        <span
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            setShowModal(false);
+            setAiExplanation("");
+            setRawText("");
+          }}
+        >
+          ✖
+        </span>
+      </div>
+
+      {/* BODY */}
+      <div style={styles.modalBody}>
+  {thinkingStage !== "done" ? (
+    <div style={styles.thinkingBox}>
+      
+      {thinkingStage === "thinking" && (
+        <p>🧠 AI is thinking about the explanation...</p>
+      )}
+
+      {thinkingStage === "analyzing" && (
+        <p>🔍 Analyzing question and options...</p>
+      )}
+
+      {thinkingStage === "generating" && (
+        <p>⚡ Generating explanation... Please wait</p>
+      )}
+
+    </div>
+  ) : (
+    <ReactMarkdown
+      components={{
+        h3: ({ children }) => (
+          <h3 style={{ fontWeight: "700", marginTop: 10 }}>
+            {children}
+          </h3>
+        ),
+        li: ({ children }) => (
+          <li style={{ marginLeft: 18, marginBottom: 6 }}>
+            {children}
+          </li>
+        ),
+        p: ({ children }) => (
+          <p style={{ marginBottom: 6 }}>
+            {children}
+          </p>
+        ),
+      }}
+    >
+      {aiExplanation}
+    </ReactMarkdown>
+  )}
+</div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
@@ -480,4 +631,60 @@ accuracyBadge: {
     fontWeight: 700,
     cursor: "pointer",
   },
+  aiBtn: {
+  marginTop: 12,
+  background: "linear-gradient(135deg,#9333ea,#7e22ce)",
+  color: "#fff",
+  border: "none",
+  padding: "10px 16px",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 600,
+},
+
+modalOverlay: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.6)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000,
+},
+
+modal: {
+  width: "650px",
+  maxHeight: "80vh", // 🔥 IMPORTANT
+  background: "#fff",
+  borderRadius: 16,
+  display: "flex",
+  flexDirection: "column", // 🔥 IMPORTANT
+  overflow: "hidden",
+},
+
+modalHeader: {
+  padding: "12px 16px",
+  background: "#2563eb",
+  color: "#fff",
+  display: "flex",
+  justifyContent: "space-between",
+},
+
+modalBody: {
+  padding: 16,
+  overflowY: "auto",
+  flex: 1,
+  fontSize: 14,
+  lineHeight: 1.6,
+
+  scrollbarWidth: "thin",
+},
+thinkingBox: {
+  fontSize: 15,
+  color: "#334155",
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  paddingTop: 10,
+},
 };

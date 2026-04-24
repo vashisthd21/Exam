@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ChatWidget from "../components/ChatWidget";
 import axios from 'axios';
 const API = import.meta.env.VITE_API_BASE_URL;
+console.log(API);
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user')) || {};
