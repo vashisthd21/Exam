@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ChatWidget from "../components/ChatWidget";
 import axios from 'axios';
-import API from "../api";
+const API = import.meta.env.VITE_API_BASE_URL;
 const Dashboard = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user')) || {};
@@ -18,7 +19,8 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await API.get("/api/dashboard/stats",
+        const res = await axios.get(
+          `${API}/api/dashboard/stats`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -158,6 +160,7 @@ const Dashboard = () => {
                 onClick={() => handleQuizSelection('30')}
               >
                 <div style={styles.examIcon}>🧠</div>
+                
                 <h4>Full Practice</h4>
                 <p>30 Random Questions</p>
                 <span>🔥 Moderate</span>
@@ -206,6 +209,7 @@ const Dashboard = () => {
           </div>
         </div>
       </footer>
+      <ChatWidget />
     </div>
   );
 };
