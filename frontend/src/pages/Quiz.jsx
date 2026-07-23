@@ -3,7 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import io from 'socket.io-client';
 import { debounce } from 'lodash';
-import CameraFeed from './CameraFeed';
+// AI Proctor
+import WebcamFeed from "../components/AIProctor/WebcamFeed";
+import FaceDetection from "../components/AIProctor/FaceDetector";
+import BrowserMonitor from "../components/AIProctor/BrowserMonitor";
+import ProctorMonitor from "../components/AIProctor/ProctorMonitor";
 
 // const API = 'https://exam-86ot.onrender.com';
 const API = import.meta.env.VITE_API_BASE_URL;
@@ -27,7 +31,15 @@ export default function Quiz() {
   const fullscreenAllowed = useRef(false);
   const fullscreenStarted = useRef(false);
   const timerRef = useRef(null);
+  /* ================= AI PROCTOR ================= */
 
+  const webcamRef = useRef(null);
+
+  const [faceStatus, setFaceStatus] =
+    useState("no-face");
+
+  const [violations, setViolations] =
+    useState([]);
   /* ================= FETCH QUIZ ================= */
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -60,33 +72,118 @@ export default function Quiz() {
 
   const q = flatQuestions[currentIndex];
 
-  /* ================= FULLSCREEN ================= */
-  const requestFullscreen = async () => {
-    if (fullscreenStarted.current) return;
+  const handleViolation = async (violation) => {
 
-    try {
-      await document.documentElement.requestFullscreen();
-      fullscreenStarted.current = true;
-      fullscreenAllowed.current = true;
-    } catch {}
-  };
+    const event = {
 
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      if (
-        fullscreenAllowed.current &&
-        !document.fullscreenElement &&
-        !submitted
-      ) {
-        alert('Fullscreen exited. Submitting exam.');
-        handleSubmit();
-      }
+        ...violation,
+
+        timestamp: new Date().toISOString()
+
     };
 
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () =>
-      document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, [submitted]);
+    setViolations(prev => [...prev, event]);
+
+    try{
+
+        const token = localStorage.getItem("token");
+
+        await axios.post(
+
+            `${API}/api/proctor/violation`,
+
+            {
+
+                quizType,
+
+                ...event
+
+            },
+
+            {
+
+                headers:{
+
+                    Authorization:`Bearer ${token}`
+
+                }
+
+            }
+
+        );
+
+    }
+
+    catch(err){
+
+        console.log(err);
+
+    }
+
+};
+
+  // Auto Submit from AI Proctor
+
+  const handleAutoSubmit = async (reason) => {
+
+    const event = {
+
+        type:
+            reason.includes("Multiple")
+                ? "MULTIPLE_FACES"
+                : "NO_FACE",
+
+        message: reason,
+
+        timestamp: new Date().toISOString()
+
+    };
+
+    setViolations(prev => [...prev, event]);
+
+    await handleViolation(event);
+    await new Promise(resolve => setTimeout(resolve,300));
+    handleSubmit();
+
+};
+  /* ================= FULLSCREEN ================= */
+
+useEffect(() => {
+
+  const handleFullscreen = () => {
+
+    if (
+      fullscreenAllowed.current &&
+      !document.fullscreenElement &&
+      !submitted
+    ) {
+
+      handleViolation({
+
+        type: "FULLSCREEN_EXIT",
+
+        message: "Fullscreen exited."
+
+      });
+
+      handleSubmit();
+
+    }
+
+  };
+
+  document.addEventListener(
+    "fullscreenchange",
+    handleFullscreen
+  );
+
+  return () =>
+    document.removeEventListener(
+      "fullscreenchange",
+      handleFullscreen
+    );
+
+}, [submitted]);
 
   /* ================= GLOBAL TIMER ================= */
   useEffect(() => {
@@ -96,7 +193,7 @@ export default function Quiz() {
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(timerRef.current);
-          handleSubmit();
+          handleAutoSubmit("Quiz timer expired.");
           return 0;
         }
         return t - 1;
@@ -105,30 +202,34 @@ export default function Quiz() {
 
     return () => clearInterval(timerRef.current);
   }, [loading, submitted]);
+/* ================= BROWSER MONITOR ================= */
 
-  /* ================= TAB SWITCH ================= */
-  useEffect(() => {
-    const handler = debounce(() => {
-      if (document.hidden && !submitted) {
-        socket.emit('tab-switch', { reason: 'visibility-change' });
-        handleSubmit();
-      }
-    }, 800);
+useEffect(() => {
 
-    document.addEventListener('visibilitychange', handler);
-    return () =>
-      document.removeEventListener('visibilitychange', handler);
-  }, [submitted]);
+  const browserViolation = (event) => {
+
+    handleViolation(event);
+
+  };
+
+  return () => {};
+
+}, []);
 
   /* ================= ANSWER ================= */
   const selectAnswer = async (qid, optionIndex) => {
     if (submitted || submitting) return;
-    await requestFullscreen();
+    if (!document.fullscreenElement) {
+
+        await document.documentElement.requestFullscreen();
+    
+    }
     setAnswers(prev => ({ ...prev, [qid]: optionIndex }));
   };
 
   /* ================= SUBMIT ================= */
   const handleSubmit = async () => {
+    clearInterval(timerRef.current);
     if (submitted || submitting) return;
     setSubmitting(true);
 
@@ -221,6 +322,17 @@ export default function Quiz() {
   /* ================= UI ================= */
   return (
     <div style={styles.page}>
+      <BrowserMonitor
+        onViolation={handleViolation}
+      />
+      <FaceDetection
+        webcamRef={webcamRef}
+        setStatus={setFaceStatus}
+      />
+      <ProctorMonitor
+        status={faceStatus}
+        onAutoSubmit={handleAutoSubmit}
+      />
       <div style={styles.topBar}>
         <span style={styles.timerTop}>
           ⏱ {Math.floor(timeLeft / 60)}:
@@ -353,7 +465,11 @@ export default function Quiz() {
           style={styles.nextBtn}
           disabled={currentIndex === flatQuestions.length - 1}
           onClick={async () => {
-            await requestFullscreen();
+            if (!document.fullscreenElement) {
+
+                await document.documentElement.requestFullscreen();
+            
+            }
             setCurrentIndex(i =>
               Math.min(i + 1, flatQuestions.length - 1)
             );
@@ -375,13 +491,32 @@ export default function Quiz() {
         ✖
       </button>
 
-      {!submitted && <CameraFeed />}
-
+      {/* {!submitted && <CameraFeed />} */}
+      {!submitted && (
+        <WebcamFeed
+            webcamRef={webcamRef}
+            status={faceStatus}
+        />
+      )}
       {showExit && (
         <div style={styles.modal}>
           <div style={styles.modalBox}>
             <p>Exit exam? Quiz will be submitted.</p>
-            <button onClick={handleSubmit}>Exit & Submit</button>
+            <button
+              onClick={() => {
+
+                  handleViolation({
+
+                      type:"MANUAL_EXIT",
+
+                      message:"Student exited exam."
+
+                  });
+
+                  handleSubmit();
+
+              }}
+            >Exit & Submit</button>
             <button onClick={() => setShowExit(false)}>Cancel</button>
           </div>
         </div>
@@ -394,194 +529,257 @@ export default function Quiz() {
 /* ================= STYLES ================= */
 const styles = {
   page: {
-    minHeight: '100vh',
-    background: 'linear-gradient(180deg,#0b3a82,#eaf1ff)',
-    padding: 20,
+    minHeight: "100vh",
+    background: "linear-gradient(135deg,#eef2ff 0%,#f8fafc 45%,#ffffff 100%)",
+    padding: "30px",
     fontFamily: "'Inter', sans-serif",
   },
+
   topBar: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  timerTop: {
-    background: '#1e40af',
-    color: '#fff',
-    padding: '8px 18px',
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    background: "#fff",
+    padding: "18px 28px",
     borderRadius: 20,
-    fontWeight: 700,
+    boxShadow: "0 10px 35px rgba(0,0,0,.08)",
+    marginBottom: 25,
   },
-  palette: {
-    display: 'flex',
-    gap: 10,
-    overflowX: 'auto',
-    maxWidth: '75%',
-  },
-  circle: {
-    width: 40,
-    height: 40,
-    borderRadius: '50%',
-    border: 'none',
-    fontWeight: 700,
-    cursor: 'pointer',
-  },
-  card: {
-    display: 'flex',
-    height: '68vh',
-    background: '#fff',
+
+  timerTop: {
+    background: "#2563eb",
+    color: "#fff",
+    padding: "14px 24px",
     borderRadius: 18,
-    maxWidth: 1200,
-    margin: 'auto',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+    fontWeight: 700,
+    fontSize: 18,
+    boxShadow: "0 8px 20px rgba(37,99,235,.35)",
   },
+
+  palette: {
+    display: "flex",
+    gap: 12,
+    overflowX: "auto",
+    maxWidth: "75%",
+    padding: "4px",
+  },
+
+  circle: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    border: "none",
+    fontWeight: 700,
+    cursor: "pointer",
+    transition: "all .25s ease",
+    boxShadow: "0 5px 15px rgba(0,0,0,.08)",
+  },
+
+  card: {
+    display: "flex",
+    background: "#fff",
+    borderRadius: 24,
+    maxWidth: 1300,
+    margin: "auto",
+    border: "1px solid #e5e7eb",
+    overflow: "hidden",
+    boxShadow: "0 20px 45px rgba(0,0,0,.08)",
+  },
+
   left: {
     flex: 1,
-    padding: '50px',
-    borderRight: '1px solid #e5e7eb',
+    padding: "60px",
+    borderRight: "1px solid #eef2f7",
   },
+
   right: {
     flex: 1,
-    padding: '50px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 18,
-  },
-  question: {
-    fontSize: 22,
-    lineHeight: 1.6,
-  },
-  option: {
-    padding: '16px',
-    borderRadius: 14,
-    display: 'flex',
-    gap: 14,
-    cursor: 'pointer',
-    fontSize: 16,
-  },
-  navBar: {
-    display: 'flex',
-    justifyContent: 'center',
+    padding: "60px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
     gap: 20,
-    marginTop: 25,
   },
-  prevBtn: {
-    padding: '12px 26px',
-    borderRadius: 12,
-    border: '1px solid #cbd5e1',
+
+  question: {
+    fontSize: 27,
+    lineHeight: 1.8,
+    fontWeight: 600,
+    color: "#111827",
+    marginTop: 20,
   },
-  nextBtn: {
-    padding: '12px 26px',
-    borderRadius: 12,
-    background: '#2563eb',
-    color: '#fff',
-  },
-  submitBtn: {
-    padding: '12px 34px',
-    borderRadius: 14,
-    background: 'linear-gradient(135deg,#16a34a,#22c55e)',
-    color: '#fff',
-    fontWeight: 700,
-  },
-  exit: {
-    position: 'fixed',
-    bottom: 25,
-    right: 25,
-    background: '#ef4444',
-    color: '#fff',
-    width: 48,
-    height: 48,
-    borderRadius: '50%',
-  },
-  modal: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.45)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalBox: {
-    background: '#fff',
-    padding: 30,
-    borderRadius: 12,
-  },
-  center: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: '100vh',
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #f5f7fa, #c3cfe2)",
-  },
-  resultBox: {
-    background: '#fff',
-    padding: 40,
+
+  option: {
+    display: "flex",
+    alignItems: "center",
+    gap: 16,
+    padding: "18px 22px",
     borderRadius: 16,
+    border: "2px solid #dbeafe",
+    cursor: "pointer",
+    fontSize: 17,
+    fontWeight: 500,
+    transition: "all .25s ease",
+    boxShadow: "0 6px 15px rgba(0,0,0,.05)",
   },
-  loading: {
-    color: '#fff',
-    textAlign: 'center',
+
+  navBar: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 25,
+    marginTop: 35,
   },
-  resultCard: {
-    background: "#ffffff",
-    padding: "40px",
-    borderRadius: "16px",
-    width: "380px",
+
+  prevBtn: {
+    padding: "14px 30px",
+    borderRadius: 14,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 16,
+    transition: "all .25s ease",
+    boxShadow: "0 6px 15px rgba(0,0,0,.05)",
+  },
+
+  nextBtn: {
+    padding: "14px 30px",
+    borderRadius: 14,
+    border: "none",
+    background: "#2563eb",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 16,
+    transition: "all .25s ease",
+    boxShadow: "0 10px 22px rgba(37,99,235,.25)",
+  },
+
+  submitBtn: {
+    padding: "14px 36px",
+    borderRadius: 14,
+    border: "none",
+    background: "linear-gradient(135deg,#16a34a,#22c55e)",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 16,
+    transition: "all .25s ease",
+    boxShadow: "0 10px 22px rgba(34,197,94,.3)",
+  },
+
+  exit: {
+    position: "fixed",
+    bottom: 20,
+    left: 20,
+    background: "#ef4444",
+    color: "#fff",
+    border: "none",
+    padding: "14px 22px",
+    borderRadius: 14,
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 10px 22px rgba(239,68,68,.25)",
+    zIndex: 1000,
+  },
+
+  modal: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15,23,42,.55)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    backdropFilter: "blur(6px)",
+  },
+
+  modalBox: {
+    width: 420,
+    background: "#fff",
+    borderRadius: 20,
+    padding: 35,
     textAlign: "center",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+    boxShadow: "0 20px 50px rgba(0,0,0,.18)",
+  },
+
+  center: {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    minHeight: "100vh",
+    background: "linear-gradient(135deg,#eef2ff,#f8fafc)",
+  },
+
+  loading: {
+    fontSize: 22,
+    color: "#2563eb",
+    textAlign: "center",
+    marginTop: 80,
+    fontWeight: 600,
+  },
+
+  resultCard: {
+    background: "#fff",
+    width: 450,
+    padding: 50,
+    borderRadius: 24,
+    textAlign: "center",
+    boxShadow: "0 20px 45px rgba(0,0,0,.08)",
   },
 
   title: {
-    fontSize: "22px",
-    fontWeight: "700",
-    color: "#1f2937",
-    marginBottom: "20px",
+    fontSize: 26,
+    fontWeight: 700,
+    color: "#111827",
+    marginBottom: 25,
   },
 
   scoreCircle: {
-    width: "140px",
-    height: "140px",
+    width: 170,
+    height: 170,
     borderRadius: "50%",
-    margin: "0 auto 20px",
-    background: "linear-gradient(135deg, #2563eb, #1e40af)",
+    margin: "0 auto 30px",
+    background: "linear-gradient(135deg,#2563eb,#1e3a8a)",
     display: "flex",
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
     color: "#fff",
-    boxShadow: "0 8px 20px rgba(37,99,235,0.4)",
+    boxShadow: "0 15px 35px rgba(37,99,235,.35)",
   },
 
   scoreText: {
-    fontSize: "42px",
-    fontWeight: "700",
+    fontSize: 52,
+    fontWeight: 700,
   },
 
   totalText: {
-    fontSize: "18px",
-    marginLeft: "6px",
+    fontSize: 20,
+    marginLeft: 6,
   },
 
   percentage: {
-    fontSize: "16px",
+    fontSize: 18,
     color: "#374151",
-    marginBottom: "10px",
+    marginBottom: 12,
   },
 
   message: {
-    fontSize: "15px",
+    fontSize: 16,
     color: "#6b7280",
-    marginBottom: "25px",
+    marginBottom: 28,
+    lineHeight: 1.6,
   },
 
   dashboardBtn: {
-    padding: "12px 22px",
-    fontSize: "15px",
-    fontWeight: "600",
+    padding: "14px 30px",
+    fontSize: 16,
+    fontWeight: 700,
     color: "#fff",
-    background: "linear-gradient(135deg, #16a34a, #15803d)",
+    background: "linear-gradient(135deg,#16a34a,#15803d)",
     border: "none",
-    borderRadius: "10px",
+    borderRadius: 14,
     cursor: "pointer",
-    transition: "transform 0.2s ease",
-  }
+    transition: "all .25s ease",
+    boxShadow: "0 10px 22px rgba(22,163,74,.3)",
+  },
 };
