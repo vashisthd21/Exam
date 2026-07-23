@@ -1,24 +1,38 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import http from 'http';
-import { Server } from 'socket.io';
-import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
-import authroute from './routes/route.auth.js';
-import quizroute from './routes/route.quiz.js';
-import contactRoute from './routes/contact.js';
-import dashboardRoutes from './routes/route.dashboard.js';
-import chatRoutes from './routes/route.chatbot.js';
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import http from "http";
+import { Server } from "socket.io";
+import cookieParser from "cookie-parser";
+import dotenv from "dotenv";
+import adminRoutes from "./routes/admin.routes.js";
+import authroute from "./routes/route.auth.js";
+import quizroute from "./routes/route.quiz.js";
+import contactRoute from "./routes/contact.js";
+import dashboardRoutes from "./routes/route.dashboard.js";
+import chatRoutes from "./routes/route.chatbot.js";
+import examAIRoutes from "./routes/route.examAI.js";
+import proctorRoutes from "./routes/route.proctor.js";
+import teacherRoutes from "./routes/route.teacher.js"; // ✅ NEW
+import questionRoutes from "./routes/route.question.js";
 
 dotenv.config();
+
 const app = express();
 const server = http.createServer(app);
+
 console.log("HF KEY:", process.env.HF_API_KEY);
+
 const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(',')
-  : ['http://localhost:5173'];
+  ? process.env.CLIENT_URL.split(",")
+  : ["http://localhost:5173"];
+
 console.log(process.env.CLIENT_URL);
+
+// =====================================================
+// Middleware
+// =====================================================
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -27,7 +41,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error('CORS not allowed'));
+        callback(new Error("CORS not allowed"));
       }
     },
     credentials: true,
@@ -37,88 +51,76 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.use('/api/auth', authroute);
-app.use('/api/quiz', quizroute);
-app.use('/api/contact', contactRoute);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/chat',chatRoutes);
-// app.post("/api/chat", async (req, res) => {
-//   const { message } = req.body;
+// =====================================================
+// Routes
+// =====================================================
+app.use("/api/admin", adminRoutes);
+app.use("/api/auth", authroute);
+app.use("/api/quiz", quizroute);
+app.use("/api/contact", contactRoute);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/exam-ai", examAIRoutes);
+app.use("/api/proctor", proctorRoutes);
+app.use("/api/teacher", teacherRoutes); // ✅ NEW
+app.use("/api/question", questionRoutes);
 
-//   try {
-//     const model = genAI.getGenerativeModel({
-//       model: "gemini-3-flash-preview", // ✅ fast + free
-//     });
-
-//     const prompt = `
-// You are a UPSC mentor.
-
-// Rules:
-// - Answer in bullet points
-// - Keep it concise
-// - Add examples
-// - Make it exam-oriented
-
-// Question: ${message}
-// `;
-
-//     const result = await model.generateContent(prompt);
-//     const response = await result.response;
-
-//     res.json({
-//       reply: response.text(),
-//     });
-//   } catch (err) {
-//     console.error("Gemini error:", err.message);
-
-//     res.status(500).json({
-//       reply: "⚠️ Gemini AI failed. Try again.",
-//     });
-//   }
-// });
+// =====================================================
+// MongoDB
+// =====================================================
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.error('Mongo error:', err));
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch((err) => console.error("❌ Mongo Error:", err));
+
+// =====================================================
+// Socket.IO
+// =====================================================
 
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
-    methods: ['GET', 'POST'],
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-io.on('connection', socket => {
-  console.log('🟢 Socket connected:', socket.id);
+io.on("connection", (socket) => {
+  console.log("🟢 Socket Connected:", socket.id);
 
-  // 🔥 TAB SWITCH / PROCTOR EVENT
-  socket.on('tab-switch', payload => {
-    console.log('⚠️ Tab switch detected:', {
+  socket.on("tab-switch", (payload) => {
+    console.log("⚠️ Tab Switch:", {
       socketId: socket.id,
       reason: payload?.reason,
       time: new Date(),
     });
-
-    // 👉 future use:
-    // - mark attempt suspicious
-    // - auto submit quiz
-    // - log violation
   });
 
-  socket.on('disconnect', () => {
-    console.log('🔴 Socket disconnected:', socket.id);
+  socket.on("disconnect", () => {
+    console.log("🔴 Socket Disconnected:", socket.id);
   });
 });
 
-// ✅ GLOBAL ERROR HANDLER (SAFE)
+// =====================================================
+// Global Error Handler
+// =====================================================
+
 app.use((err, req, res, next) => {
-  console.error('Global error:', err.message);
-  res.status(500).json({ message: 'Internal server error' });
+  console.error("Global Error:", err.message);
+
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+  });
 });
+
+// =====================================================
+// Server
+// =====================================================
 
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server Running on Port ${PORT}`);
 });

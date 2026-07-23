@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-
-// const API = 'https://exam-86ot.onrender.com';
+import { ShieldCheck, RefreshCw, Sun, Moon, ArrowRight } from "lucide-react";
 
 const API = import.meta.env.VITE_API_BASE_URL;
-
 
 const VerifyOTP = () => {
   const navigate = useNavigate();
@@ -76,7 +74,7 @@ const VerifyOTP = () => {
     const finalOtp = manualOtp || otp.join("");
 
     if (finalOtp.length !== 6) {
-      toast.error("Enter complete OTP");
+      toast.error("Please enter the complete 6-digit code.");
       return;
     }
 
@@ -94,14 +92,13 @@ const VerifyOTP = () => {
         { withCredentials: true }
       );
 
-      // Save authentication data
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      login(res.data.user);
+      if (login) login(res.data.user);
 
       setSuccess(true);
-      toast.success("Authentication Successful 🎉");
+      toast.success("Verification successful!");
 
       setTimeout(() => {
         if (res.data.user.role === "admin") {
@@ -113,7 +110,7 @@ const VerifyOTP = () => {
 
     } catch (err) {
       setShake(true);
-      toast.error(err.response?.data?.message || "Invalid OTP");
+      toast.error(err.response?.data?.message || "Invalid OTP code.");
       setOtp(Array(6).fill(""));
       inputsRef.current[0]?.focus();
       setTimeout(() => setShake(false), 500);
@@ -132,172 +129,233 @@ const VerifyOTP = () => {
       await axios.post(`${API}${endpoint}`, { userId });
 
       setTimer(60);
-      toast.success("OTP Resent Successfully");
-
+      toast.success("New verification code sent.");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Resend failed");
+      toast.error(err.response?.data?.message || "Failed to resend OTP.");
     }
   };
 
-  const styles = {
-    page: {
-      minHeight: "100vh",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      background: dark
-        ? "linear-gradient(135deg, #111, #1f2937)"
-        : "linear-gradient(135deg, #0b3a82, #3b82f6)",
-      transition: "0.3s ease",
-      position: "relative",
-      padding: "20px",
-    },
-
-    card: {
-      backdropFilter: "blur(20px)",
-      background: dark
-        ? "rgba(0,0,0,0.6)"
-        : "rgba(255,255,255,0.2)",
-      padding: "40px 30px",
-      borderRadius: "20px",
-      width: "100%",
-      maxWidth: "400px",
-      textAlign: "center",
-      color: "#fff",
-      boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
-    },
-
-    title: {
-      fontSize: "26px",
-      fontWeight: "800",
-      marginBottom: "10px",
-    },
-
-    subtitle: {
-      fontSize: "14px",
-      opacity: 0.8,
-      marginBottom: "25px",
-    },
-
-    otpContainer: {
-      display: "flex",
-      justifyContent: "space-between",
-      marginBottom: "20px",
-    },
-
-    otpInput: {
-      width: "45px",
-      height: "55px",
-      fontSize: "22px",
-      textAlign: "center",
-      borderRadius: "10px",
-      border: "none",
-      outline: "none",
-      fontWeight: "bold",
-    },
-
-    button: {
-      width: "100%",
-      padding: "12px",
-      borderRadius: "10px",
-      border: "none",
-      background: success ? "#22c55e" : "#2563eb",
-      color: "#fff",
-      fontWeight: "bold",
-      cursor: "pointer",
-      transition: "0.3s ease",
-    },
-
-    resend: {
-      marginTop: "15px",
-      fontSize: "14px",
-      opacity: 0.8,
-    },
-
-    resendBtn: {
-      background: "none",
-      border: "none",
-      color: "#fff",
-      fontWeight: "600",
-      cursor: "pointer",
-    },
-
-    toggle: {
-      position: "absolute",
-      top: "20px",
-      right: "20px",
-      background: "none",
-      border: "none",
-      fontSize: "22px",
-      cursor: "pointer",
-      color: "#fff",
-    },
-  };
-
   return (
-    <div style={styles.page}>
-      <Toaster position="top-center" />
+    <>
+      <style>{`
+        body { margin: 0; font-family: 'Inter', -apple-system, sans-serif; }
+        .otp-input:focus {
+          border-color: #2563EB !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+          outline: none;
+        }
+        .btn-hover { transition: all 0.2s ease; }
+        .btn-hover:not(:disabled):hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+      `}</style>
 
-      <button style={styles.toggle} onClick={() => setDark(!dark)}>
-        {dark ? "☀️" : "🌙"}
-      </button>
+      <div style={{ ...styles.page, background: dark ? "#0F172A" : "#F8FAFC" }}>
+        <Toaster position="top-center" />
 
-      <motion.div
-        style={styles.card}
-        animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
-        transition={{ duration: 0.4 }}
-      >
-        <h2 style={styles.title}>Verify OTP</h2>
-        <p style={styles.subtitle}>
-          Enter the 6-digit code sent to your email
-        </p>
-
-        <div style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              type="text"
-              maxLength="1"
-              value={digit}
-              ref={(el) => (inputsRef.current[index] = el)}
-              onChange={(e) => handleChange(e.target.value, index)}
-              onKeyDown={(e) => handleKeyDown(e, index)}
-              onPaste={(e) => {
-                const pasted = e.clipboardData.getData("text").slice(0, 6);
-                if (/^\d{6}$/.test(pasted)) {
-                  setOtp(pasted.split(""));
-                  handleVerify(pasted);
-                }
-              }}
-              style={styles.otpInput}
-            />
-          ))}
-        </div>
-
-        <button
-          style={styles.button}
-          disabled={loading}
-          onClick={() => handleVerify()}
+        {/* Theme Toggle */}
+        <button 
+          style={{ ...styles.toggle, color: dark ? "#F8FAFC" : "#0F172A" }} 
+          onClick={() => setDark(!dark)}
+          aria-label="Toggle Theme"
         >
-          {loading
-            ? "Verifying..."
-            : success
-            ? "✔ Verified"
-            : "Verify OTP"}
+          {dark ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
-        <div style={styles.resend}>
-          {timer > 0 ? (
-            <p>Resend OTP in {timer}s</p>
-          ) : (
-            <button style={styles.resendBtn} onClick={handleResend}>
-              Resend OTP
-            </button>
-          )}
-        </div>
-      </motion.div>
-    </div>
+        <motion.div
+          style={{
+            ...styles.card,
+            background: dark ? "rgba(30, 41, 59, 0.85)" : "rgba(255, 255, 255, 0.95)",
+            borderColor: dark ? "#334155" : "#E2E8F0",
+            color: dark ? "#F8FAFC" : "#0F172A",
+          }}
+          className="glass-card"
+          animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+          transition={{ duration: 0.4 }}
+        >
+          <div style={styles.iconContainer}>
+            <ShieldCheck size={28} color="#2563EB" />
+          </div>
+
+          <h2 style={styles.title}>Security Verification</h2>
+          <p style={{ ...styles.subtitle, color: dark ? "#94A3B8" : "#64748B" }}>
+            Enter the 6-digit verification code sent to your registered email address.
+          </p>
+
+          <div style={styles.otpContainer}>
+            {otp.map((digit, index) => (
+              <input
+                key={index}
+                type="text"
+                maxLength="1"
+                value={digit}
+                ref={(el) => (inputsRef.current[index] = el)}
+                onChange={(e) => handleChange(e.target.value, index)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData.getData("text").slice(0, 6);
+                  if (/^\d{6}$/.test(pasted)) {
+                    setOtp(pasted.split(""));
+                    handleVerify(pasted);
+                  }
+                }}
+                className="otp-input"
+                style={{
+                  ...styles.otpInput,
+                  background: dark ? "#0F172A" : "#F8FAFC",
+                  color: dark ? "#F8FAFC" : "#0F172A",
+                  borderColor: dark ? "#334155" : "#CBD5E1",
+                }}
+              />
+            ))}
+          </div>
+
+          <button
+            style={{
+              ...styles.button,
+              background: success ? "#10B981" : "#2563EB",
+            }}
+            disabled={loading}
+            onClick={() => handleVerify()}
+            className="btn-hover"
+          >
+            {loading ? (
+              <span>Verifying...</span>
+            ) : success ? (
+              <span>Verified Successfully</span>
+            ) : (
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                Verify & Proceed <ArrowRight size={16} />
+              </span>
+            )}
+          </button>
+
+          <div style={{ ...styles.resend, color: dark ? "#94A3B8" : "#64748B" }}>
+            {timer > 0 ? (
+              <p style={{ margin: 0 }}>Resend code in <strong style={{ color: dark ? "#E2E8F0" : "#334155" }}>{timer}s</strong></p>
+            ) : (
+              <button style={styles.resendBtn} onClick={handleResend}>
+                <RefreshCw size={14} /> Resend Verification Code
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </>
   );
+};
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    transition: "background 0.3s ease",
+    position: "relative",
+    padding: "20px",
+  },
+
+  card: {
+    backdropFilter: "blur(16px)",
+    padding: "40px 36px",
+    borderRadius: "24px",
+    width: "100%",
+    maxWidth: "440px",
+    textAlign: "center",
+    border: "1px solid",
+    boxShadow: "0 20px 40px -15px rgba(0,0,0,0.1)",
+  },
+
+  iconContainer: {
+    width: "56px",
+    height: "56px",
+    borderRadius: "16px",
+    background: "#EFF6FF",
+    border: "1px solid #BFDBFE",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 20px auto",
+  },
+
+  title: {
+    fontSize: "22px",
+    fontWeight: "700",
+    marginBottom: "8px",
+    letterSpacing: "-0.02em",
+  },
+
+  subtitle: {
+    fontSize: "14px",
+    lineHeight: "1.5",
+    marginBottom: "30px",
+  },
+
+  otpContainer: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "8px",
+    marginBottom: "28px",
+  },
+
+  otpInput: {
+    width: "48px",
+    height: "56px",
+    fontSize: "20px",
+    textAlign: "center",
+    borderRadius: "12px",
+    border: "1.5px solid",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+  },
+
+  button: {
+    width: "100%",
+    padding: "14px",
+    borderRadius: "12px",
+    border: "none",
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: "15px",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(37,99,235,0.2)",
+  },
+
+  resend: {
+    marginTop: "24px",
+    fontSize: "13px",
+  },
+
+  resendBtn: {
+    background: "none",
+    border: "none",
+    color: "#2563EB",
+    fontWeight: "600",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "13px",
+  },
+
+  toggle: {
+    position: "absolute",
+    top: "24px",
+    right: "24px",
+    background: "transparent",
+    border: "1px solid rgba(100, 116, 139, 0.2)",
+    borderRadius: "10px",
+    width: "40px",
+    height: "40px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
+    transition: "background 0.2s ease",
+  },
 };
 
 export default VerifyOTP;

@@ -1,76 +1,80 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const questionSchema = new mongoose.Schema(
+const quizSchema = new mongoose.Schema(
   {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
     subject: {
       type: String,
       required: true,
-      trim: true,
-      enum: [
-        'Polity',
-        'Economy',
-        'History',
-        'Geography',
-        'Environment',
-        'Science & Tech',
-        'Current Affairs',
-      ],
-    },
-    explanation: {
-      type: String,
-      required: true
     },
 
-    tags: [
-      {
-        type: String
-      }
-    ],
-    question: {
+    topic: {
       type: String,
-      required: true,
       trim: true,
     },
 
-    options: [
+    duration: {
+      type: Number,
+      default: 30,
+    },
+
+    difficulty: {
+      type: String,
+      enum: ["Easy", "Medium", "Hard"],
+      default: "Medium",
+    },
+
+    questions: [
       {
-        type: String,
-        required: true,
-        trim: true,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Question",
       },
     ],
 
-    // index of correct option (0,1,2,3)
-    answer: {
+    totalMarks: {
       type: Number,
-      required: true,
-      min: 0,
-      max: 3,
+      default: 0,
     },
 
-    // UPSC PYQ year
-    year: {
+    passingMarks: {
       type: Number,
+      default: 0,
+    },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
 
-    // exam source (future ready)
-    exam: {
-      type: String,
-      default: 'UPSC Prelims',
+    assignedStudents: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    isPublished: {
+      type: Boolean,
+      default: false,
     },
 
-    // optional but useful
-    difficulty: {
-      type: String,
-      enum: ['Easy', 'Moderate', 'Hard'],
-      default: 'Moderate',
-    },
+    startTime: Date,
+
+    endTime: Date,
   },
   {
-    timestamps: true, // adds createdAt & updatedAt
+    timestamps: true,
   }
 );
 
-const Question = mongoose.model('Question', questionSchema);
-export default Question;
+const Quiz =
+  mongoose.models.Quiz ||
+  mongoose.model("Quiz", quizSchema);
+
+export default Quiz;

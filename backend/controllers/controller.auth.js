@@ -451,27 +451,92 @@ const verifyRegisterOTP = async (req, res) => {
 const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ 
+        message: 'No account found with this email address.' 
+      });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes expiration
+
+    await user.save();
+
+    // Construct frontend reset link using environment configuration or default localhost
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+
+    // Send professional HTML Reset Password email
+    await sendEmail(
+      user.email,
+      "ExamSecure Password Reset Request",
+      `
+      <div style="font-family: Arial, sans-serif; background:#f4f6fb; padding:30px;">
+        <div style="max-width:500px; margin:auto; background:#ffffff; padding:30px; border-radius:8px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+
+          <h2 style="color:#2563eb;">Password Reset Request</h2>
+
+          <p style="font-size:16px; color:#333;">
+            Hello <b>${user.name}</b>,
+          </p>
+
+          <p style="font-size:15px; color:#555;">
+            We received a request to reset the password for your <b>ExamSecure</b> account. 
+            Click the button below to proceed:
+          </p>
+
+          <div style="margin:30px 0;">
+            <a href="${resetUrl}" style="background-color:#2563eb; color:#ffffff; padding:12px 25px; border-radius:8px; text-decoration:none; font-weight:bold; font-size:16px; display:inline-block;">
+              Reset Password
+            </a>
+          </div>
+
+          <p style="font-size:14px; color:#555;">
+            Or copy and paste this link into your browser:
+          </p>
+          <p style="font-size:12px; color:#2563eb; word-break:break-all; margin-bottom:20px;">
+            ${resetUrl}
+          </p>
+
+          <p style="font-size:14px; color:#555;">
+            This link will expire in <b>15 minutes</b>.
+          </p>
+
+          <p style="font-size:13px; color:#888;">
+            If you did not request a password reset, please ignore this email and your password will remain unchanged.
+          </p>
+
+          <hr style="margin:25px 0; border:none; border-top:1px solid #eee;">
+
+          <p style="font-size:12px; color:#999;">
+            © ${new Date().getFullYear()} ExamSecure. All rights reserved.
+          </p>
+
+        </div>
+      </div>
+      `
+    );
+
+    return res.status(200).json({ 
+      success: true,
+      message: 'Password reset link sent to your email.' 
+    });
+
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    return res.status(500).json({ 
+      message: 'Failed to send password reset email. Please try again later.' 
+    });
   }
-
-  const resetToken = crypto.randomBytes(32).toString('hex');
-
-  user.resetPasswordToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-
-  user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
-
-  await user.save();
-
-  console.log("Reset Token:", resetToken); // Replace with email
-
-  res.status(200).json({ message: 'Reset link sent' });
 };
-
 const resetPassword = async (req, res) => {
   const hashedToken = crypto
     .createHash('sha256')
@@ -527,7 +592,7 @@ const googleAuth = async (req, res) => {
         email,
         password: null,
         authProvider: "google",
-        role: "user",
+        role: "student",
         totalScore: 0,
         quizSubmitted: false,
         quizScore: 0,
@@ -547,6 +612,7 @@ const googleAuth = async (req, res) => {
 
     return res.status(200).json({
       message: "Google authentication successful",
+      token: jwtToken,
       user: {
         id: user._id,
         name: user.name,
