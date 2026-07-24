@@ -1,17 +1,24 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const sendEmail = async (to, subject, html) => {
   try {
-    const response = await resend.emails.send({
-      from: "ExamSecure <onboarding@resend.dev>",
+    const info = await transporter.sendMail({
+      from: `"ExamSecure - Secure Online Exam Platform" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
     });
 
-    console.log("Email sent:", response);
+    console.log("Email sent:", info);
+    return info;
   } catch (error) {
     console.error("Email sending error:", error);
     throw error;
