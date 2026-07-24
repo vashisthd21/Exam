@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 const sendEmail = async (to, subject, html) => {
   try {
     const info = await transporter.sendMail({
-      from: 'Exam Secure - Secure Online Exam Platform',
+      from: `"ExamSecure - Secure Online Exam Platform" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
